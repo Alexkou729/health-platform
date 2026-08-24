@@ -13,3 +13,19 @@ export const planApi = { list: p => api.get('/care-plans', { params: p }), detai
 export const reportApi = { list: p => api.get('/reports', { params: p }), detail: id => api.get('/reports/' + id) };
 export const dashboardApi = { overview: () => api.get('/performance/dashboard'), staff: p => api.get('/performance/staff', { params: { period: p } }) };
 export const scriptApi = { generate: d => api.post('/scripts/generate', d) };
+// 小程序客户端（客户）API
+export const clientAuth = {
+  sendCode: phone => api.post('/client/auth/send-code', { phone }),
+  login: (phone, code) => api.post('/client/auth/login', { phone, code }),
+};
+export const clientApi = {
+  products: (category) => api.get('/client/products', { params: category ? { category } : {} }),
+  homeServices: () => api.get('/client/home-services'),
+  createMallOrder: (data) => api.post('/client/mall-orders', data),
+  mallOrders: () => api.get('/client/mall-orders'),
+  createHomeServiceOrder: (data) => api.post('/client/home-service-orders', data),
+  homeServiceOrders: () => api.get('/client/home-service-orders'),
+  reports: () => api.get('/client/reports'),
+  carePlans: () => api.get('/client/care-plans'),
+  coupons: () => api.get('/client/coupons'),
+};

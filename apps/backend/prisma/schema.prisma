@@ -64,6 +64,10 @@ model Store {
   tasks         Task[]
   performances  StaffPerformance[]
   operationLogs OperationLog[]
+  products           Product[]
+  mallOrders         MallOrder[]
+  homeServiceOrders  HomeServiceOrder[]
+  storeSettlement    StoreSettlement?
 
   @@index([code])
   @@index([status])
@@ -159,6 +163,8 @@ model Customer {
   consultationsReceived Consultation[]
   wxMiniAppUser         WxMiniAppUser?
   serviceRequests       ServiceRequest[]
+  mallOrders            MallOrder[]
+  homeServiceOrders     HomeServiceOrder[]
 
   @@index([phone])
   @@index([storeId])
@@ -952,4 +958,143 @@ model Consultation {
   updatedAt      DateTime  @updatedAt
 
   @@index([storeId, createdAt])
+}
+
+// ============================================
+// 电子商城（小程序客户端）— 增量扩展
+// ============================================
+
+// 商城商品（保健品/调理包/保健用品等）
+model Product {
+  id            String   @id @default(uuid())
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id])
+  name          String
+  category      String   @default("HEALTH") // HEALTH保健品/CARE调理包/DEVICE保健用品/OTHER
+  price         Float
+  originalPrice Float?
+  stock         Int      @default(0)
+  coverUrl      String?
+  images        String   @default("[]") // JSON 数组
+  description   String?
+  status        String   @default("PENDING") // PENDING审核中/ACTIVE上架/REJECTED驳回/OFF下架
+  auditRemark   String?
+  auditedBy     String?
+  auditedAt     DateTime?
+  commissionRate Float   @default(0) // 门店销售提成比例（0-1，总台设置）
+  salesCount    Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items MallOrderItem[]
+
+  @@index([storeId, status])
+  @@index([category])
+}
+
+// 商城订单
+model MallOrder {
+  id           String   @id @default(uuid())
+  orderNo      String   @unique
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id])
+  storeId      String   // 下单门店
+  store        Store    @relation(fields: [storeId], references: [id])
+  status       String   @default("PENDING") // PENDING待处理/ACCEPTED已接单/SHIPPED已发货/COMPLETED已完成/CANCELLED已取消
+  totalAmount  Float
+  payStatus    String   @default("UNPAID") // UNPAID/PAID
+  contactName  String?
+  contactPhone String?
+  address      String?
+  remark       String?
+  paidAt       DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  items MallOrderItem[]
+
+  @@index([storeId, status])
+  @@index([customerId, createdAt])
+}
+
+model MallOrderItem {
+  id        String    @id @default(uuid())
+  orderId   String
+  order     MallOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product   @relation(fields: [productId], references: [id])
+  name      String
+  price     Float
+  quantity  Int
+  subtotal  Float
+
+  @@index([orderId])
+}
+
+// 上门服务项目（上门理疗/上门检测等）
+model HomeService {
+  id          String   @id @default(uuid())
+  name        String
+  category    String   @default("THERAPY") // THERAPY上门理疗/DETECTION上门检测/OTHER
+  price       Float
+  durationMin Int      @default(60)
+  description String?
+  coverUrl    String?
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orders HomeServiceOrder[]
+
+  @@index([category, status])
+}
+
+// 上门服务订单（总台排单 → 门店接单 → 服务 → 结算）
+model HomeServiceOrder {
+  id           String      @id @default(uuid())
+  orderNo      String      @unique
+  customerId   String
+  customer     Customer    @relation(fields: [customerId], references: [id])
+  storeId      String
+  store        Store       @relation(fields: [storeId], references: [id])
+  serviceId    String
+  service      HomeService @relation(fields: [serviceId], references: [id])
+  serviceName  String
+  scheduledAt  DateTime
+  address      String
+  contactName  String
+  contactPhone String
+  status       String      @default("PENDING") // PENDING待排单/ASSIGNED已派单/ACCEPTED门店已接单/SERVING服务中/COMPLETED已完成/CANCELLED已取消
+  totalAmount  Float
+  payStatus    String      @default("UNPAID")
+  remark       String?
+  completedAt  DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([storeId, status])
+  @@index([customerId, createdAt])
+}
+
+// 门店结算比例配置（总台设置）
+model StoreSettlement {
+  id        String   @id @default(uuid())
+  storeId   String   @unique
+  store     Store    @relation(fields: [storeId], references: [id])
+  ratio     Float    @default(0.8) // 门店结算比例（0-1）
+  remark    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 手机验证码（小程序客户端电话登录）
+model PhoneVerifyCode {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone, createdAt])
 }

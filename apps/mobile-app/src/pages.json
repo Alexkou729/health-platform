@@ -77,6 +77,24 @@
       "style": {
         "navigationBarTitleText": "我的"
       }
+    },
+    {
+      "path": "pages/mall/index",
+      "style": {
+        "navigationBarTitleText": "健康商城"
+      }
+    },
+    {
+      "path": "pages/home-service/index",
+      "style": {
+        "navigationBarTitleText": "上门服务"
+      }
+    },
+    {
+      "path": "pages/order/list",
+      "style": {
+        "navigationBarTitleText": "我的订单"
+      }
     }
   ],
   "globalStyle": {

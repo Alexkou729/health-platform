@@ -28,6 +28,11 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { AIModule } from './modules/ai/ai.module';
 import { FranchiseModule } from './modules/franchise/franchise.module';
 import { CouponModule } from './modules/coupon/coupon.module';
+import { ProductModule } from './modules/product/product.module';
+import { MallOrderModule } from './modules/mall-order/mall-order.module';
+import { HomeServiceModule } from './modules/home-service/home-service.module';
+import { SettlementModule } from './modules/settlement/settlement.module';
+import { ClientModule } from './modules/client/client.module';
 
 @Module({
   imports: [
@@ -45,7 +50,7 @@ import { CouponModule } from './modules/coupon/coupon.module';
     PackageModule, OrderModule, StaffModule, StoreModule, WechatModule,
     DashboardModule, HealthModule, AIModule, RecipeModule, AppointmentModule, TaskModule,
     ScriptModule, PerformanceModule, PaymentModule,
-    FranchiseModule, CouponModule,
+    FranchiseModule, CouponModule, ProductModule, MallOrderModule, HomeServiceModule, SettlementModule, ClientModule,
   ],
 })
 export class AppModule {}
