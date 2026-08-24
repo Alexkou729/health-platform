@@ -41,3 +41,6 @@ Thumbs.db
 
 # git 本地配置
 .gitconfig
+
+# Office 临时文件
+~$*
