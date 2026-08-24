@@ -1,0 +1,43 @@
+# 依赖
+node_modules/
+**/node_modules/
+
+# 构建产物
+dist/
+dist-electron/
+release/
+**/dist/
+**/release/
+
+# 环境变量（含密钥，严禁入库）
+.env
+.env.local
+**/.env
+**/.env.local
+
+# 数据库与备份
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.db.bak*
+prisma/*.db
+
+# 安装包与本地交付
+LOCAL-INSTALL/
+*.exe
+*.dmg
+*.blockmap
+
+# 日志
+*.log
+logs/
+
+# 编辑器/系统
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# git 本地配置
+.gitconfig

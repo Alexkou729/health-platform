@@ -1,0 +1,13 @@
+import { createApp } from 'vue';
+import { createRouter, createWebHashHistory } from 'vue-router';
+import axios from 'axios';
+import App from './App.vue';
+import Report from './pages/Report.vue';
+import './styles.css';
+const router = createRouter({ history: createWebHashHistory(), routes: [{ path: '/', redirect: '/report' }, { path: '/report', component: Report }] });
+const apiBase = new URLSearchParams(location.search).get('api') || (location.hostname === 'localhost' ? 'http://localhost:3000/api' : location.origin + '/api');
+const api = axios.create({ baseURL: apiBase, timeout: 30000 });
+const app = createApp(App);
+app.provide('api', api);
+app.use(router);
+app.mount('#app');

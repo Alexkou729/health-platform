@@ -1,0 +1,43 @@
+{
+  "name": "@health/mobile-app",
+  "version": "1.0.0",
+  "description": "健康管理系统移动端 (iOS+Android+小程序+H5)",
+  "main": "src/main.js",
+  "scripts": {
+    "dev:h5": "uni",
+    "dev:mp-weixin": "uni -p mp-weixin",
+    "dev:app": "uni -p app",
+    "dev:app-android": "uni -p app-android",
+    "dev:app-ios": "uni -p app-ios",
+    "build:h5": "uni build",
+    "build:mp-weixin": "uni build -p mp-weixin",
+    "build:app": "uni build -p app",
+    "build:app-android": "uni build -p app-android",
+    "build:app-ios": "uni build -p app-ios",
+    "build:all": "npm run build:h5 && npm run build:mp-weixin && npm run build:app-android",
+    "package:android": "node scripts/package-android.js",
+    "package:ios": "node scripts/package-ios.js"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-3081220230817001",
+    "@dcloudio/uni-app-plus": "3.0.0-3081220230817001",
+    "@dcloudio/uni-components": "3.0.0-3081220230817001",
+    "@dcloudio/uni-h5": "3.0.0-3081220230817001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-3081220230817001",
+    "vue": "^3.4.21",
+    "vue-i18n": "^9.1.9",
+    "pinia": "2.0.36",
+    "axios": "^1.6.0",
+    "dayjs": "^1.11.10"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "^3.4.8",
+    "@dcloudio/uni-automator": "3.0.0-3081220230817001",
+    "@dcloudio/uni-cli-shared": "3.0.0-3081220230817001",
+    "@dcloudio/uni-stacktracey": "3.0.0-3081220230817001",
+    "@dcloudio/vite-plugin-uni": "3.0.0-3081220230817001",
+    "@vue/runtime-core": "^3.4.21",
+    "sass": "^1.71.0",
+    "vite": "4.1.4"
+  }
+}

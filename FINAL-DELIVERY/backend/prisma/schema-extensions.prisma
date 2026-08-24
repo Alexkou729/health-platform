@@ -1,0 +1,309 @@
+// 扩展数据库 Schema - 添加完整养生馆 SaaS 业务表
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// 组织架构 (已有)
+// ============================================
+
+// ... 原有表 (Store/Staff/Customer/Device/Detection/Report/Package/Order...)
+
+// ============================================
+// 理调方案 + 医嘱 (新增)
+// ============================================
+
+// 调理项目库 - 中医/养生馆常见项目
+model RecipeItem {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  category    String   // 按摩/艾灸/拔罐/食疗/运动/心理...
+  description String?
+  durationMin Int      @default(30)
+  price       Float    @default(0)
+  cost        Float    @default(0)
+  indications String   @default("[]") // JSON: 适用体质/症状
+  contraindications String @default("[]") // JSON: 禁忌症
+  coverUrl    String?
+  tags        String   @default("[]")
+  status      String   @default("ACTIVE")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  plans       PlanItem[]
+
+  @@index([category])
+  @@index([status])
+}
+
+// 调理方案 - 针对客户的多项目组合
+model CarePlan {
+  id          String   @id @default(uuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  detectionId String?
+  detection   Detection? @relation(fields: [detectionId], references: [id])
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id])
+  staffId     String?  // 开方顾问
+  staff       Staff?   @relation(fields: [staffId], references: [id])
+  title       String   // "张三的阳虚体质调理方案"
+  constitution String? // 体质类型
+  summary     String?  // 整体方案摘要
+  diagnosis   String?  // 中医辨证
+  advice      String?  // 医嘱 (JSON {lifestyle, diet, exercise, sleep, mood})
+  startDate   DateTime @default(now())
+  endDate     DateTime?
+  totalPrice  Float    @default(0)
+  status      String   @default("DRAFT") // DRAFT/ACTIVE/PAUSED/COMPLETED/CANCELLED
+  remark      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items       PlanItem[]
+  tasks       Task[]
+  appointments Appointment[]
+
+  @@index([customerId, createdAt])
+  @@index([storeId])
+  @@index([status])
+}
+
+model PlanItem {
+  id          String   @id @default(uuid())
+  planId      String
+  plan        CarePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  recipeId    String
+  recipe      RecipeItem @relation(fields: [recipeId], references: [id])
+  name        String
+  frequency   String   @default("1次/周") // 频次
+  duration    Int      @default(30)       // 时长（分钟）
+  price       Float
+  quantity    Int      @default(1)
+  sortOrder   Int      @default(0)
+  remark      String?
+  createdAt   DateTime @default(now())
+
+  @@index([planId])
+  @@index([recipeId])
+}
+
+// 医嘱库 - 自动生成调理建议
+model AdviceTemplate {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  constitution String  // BALANCED/QI_DEFICIENCY/... 适用体质
+  category    String   // LIFESTYLE/DIET/EXERCISE/SLEEP/MOOD/PREVENTION
+  title       String
+  content     String
+  priority    Int      @default(0) // 排序
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([constitution, category])
+}
+
+// ============================================
+// 预约系统 (新增)
+// ============================================
+
+model Appointment {
+  id          String   @id @default(uuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id])
+  staffId     String?  // 接单员工
+  staff       Staff?   @relation(fields: [staffId], references: [id])
+  planId      String?  // 关联调理方案
+  plan        CarePlan? @relation(fields: [planId], references: [id])
+  serviceType String   // DETECTION/CONSULTATION/TREATMENT/RECHECK
+  serviceName String   // 服务名称
+  scheduledAt DateTime // 预约时间
+  durationMin Int      @default(30)
+  status      String   @default("PENDING") // PENDING/CONFIRMED/IN_PROGRESS/COMPLETED/CANCELLED/NO_SHOW
+  notes       String?  // 客户备注
+  staffNotes  String?  // 员工备注
+  source      String   @default("OFFLINE") // OFFLINE/WECHAT/PHONE
+  cancelReason String?
+  confirmedAt DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([customerId, scheduledAt])
+  @@index([storeId, scheduledAt])
+  @@index([staffId, scheduledAt])
+  @@index([status])
+}
+
+model AppointmentService {
+  id            String   @id @default(uuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  serviceName   String
+  price         Float
+  durationMin   Int      @default(30)
+  staffId       String?
+  remark        String?
+  createdAt     DateTime @default(now())
+
+  @@index([appointmentId])
+}
+
+// ============================================
+// 任务/工单 (新增)
+// ============================================
+
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  type        String   // FOLLOW_UP/REMIND/DETECTION/CONSULTATION/OTHER
+  priority    String   @default("NORMAL") // LOW/NORMAL/HIGH/URGENT
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  planId      String?
+  plan        CarePlan? @relation(fields: [planId], references: [id])
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id])
+  assignerId  String?  // 分配人
+  assigner    Staff?   @relation("TaskAssigner", fields: [assignerId], references: [id])
+  assigneeId  String   // 执行人
+  assignee    Staff    @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  description String?
+  dueDate     DateTime?
+  completedAt DateTime?
+  status      String   @default("PENDING") // PENDING/IN_PROGRESS/COMPLETED/CANCELLED
+  result      String?  // 执行结果
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([assigneeId, status])
+  @@index([storeId, status])
+  @@index([customerId])
+  @@index([dueDate])
+}
+
+// ============================================
+// 话术库 (新增)
+// ============================================
+
+model ScriptTemplate {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  category    String   // DETECTION/REMIND/UPGRADE/COMPLAINT/BIRTHDAY/FOLLOW_UP
+  title       String
+  content     String   // 含 {variable} 占位符
+  variables   String   @default("[]") // JSON: 可用变量列表
+  applicableConstitution String? // 适用体质
+  scene       String   @default("ALL") // 适用场景
+  status      String   @default("ACTIVE")
+  usageCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([status])
+}
+
+// ============================================
+// 业绩 (新增)
+// ============================================
+
+model StaffPerformance {
+  id          String   @id @default(uuid())
+  staffId     String
+  staff       Staff    @relation(fields: [staffId], references: [id])
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id])
+  period      String   // 2026-08 (YYYY-MM)
+  detectionCount Int   @default(0)  // 检测数
+  customerCount Int   @default(0)  // 接待客户数
+  orderCount  Int      @default(0)  // 订单数
+  revenue     Float    @default(0)  // 业绩额
+  commission  Float    @default(0)  // 提成
+  remark      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([staffId, period])
+  @@index([storeId, period])
+}
+
+// ============================================
+// 扩展已有表的关联 (重要)
+// ============================================
+
+// 在 Customer 上添加 appointments 和 plans 关联
+// 在 Staff 上添加 appointments 和 tasks 关联
+// 在 Store 上添加 recipes, plans, tasks, appointments
+// 在 Detection 上添加 plans
+
+// ============================================
+// 微信小程序用户 (新增)
+// ============================================
+
+model WxMiniAppUser {
+  id          String   @id @default(uuid())
+  openid      String   @unique
+  unionid     String?  @index
+  customerId  String?  @unique
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  nickname    String?
+  avatarUrl   String?
+  phone       String?
+  sessionKey  String?
+  lastLoginAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// 通知模板
+model NotificationTemplate {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  channel     String   // WECHAT/SMS/EMAIL/IN_APP
+  type        String   // APPOINTMENT/REMIND/PROMOTION/SYSTEM
+  title       String
+  content     String
+  variables   String   @default("[]")
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([channel, type])
+}
+
+// ============================================
+// 系统日志（增强）
+// ============================================
+
+model OperationLog {
+  id          String   @id @default(uuid())
+  staffId     String?
+  staff       Staff?   @relation(fields: [staffId], references: [id])
+  storeId     String?
+  store       Store?   @relation(fields: [storeId], references: [id])
+  module      String   // customer/order/device/plan/appointment/...
+  action      String   // create/update/delete/view/export/...
+  targetType  String?  // Customer/Order/...
+  targetId    String?
+  description String?
+  payload     Json?
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([staffId, createdAt])
+  @@index([module, action])
+  @@index([storeId, createdAt])
+}

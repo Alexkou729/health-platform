@@ -1,0 +1,15 @@
+import axios from 'axios';
+import { getApiBase } from '../utils/config.js';
+const api = axios.create({ baseURL: getApiBase(), timeout: 30000 });
+api.interceptors.request.use(c => { const t = uni.getStorageSync('access_token'); if (t) c.headers.Authorization = 'Bearer ' + t; return c; });
+api.interceptors.response.use(res => { const d = res.data; if (d && 'code' in d) { if (d.code !== 0 && d.code !== 200) return Promise.reject(new Error(d.message)); return d.data; } return d; }, err => { if (err.response?.status === 401) { uni.removeStorageSync('access_token'); uni.reLaunch({ url: '/pages/my/index' }); } return Promise.reject(err); });
+export default api;
+export const authApi = { login: (u, p) => api.post('/auth/login', { username: u, password: p }) };
+export const customerApi = { list: p => api.get('/customers', { params: p }), detail: id => api.get('/customers/' + id), create: d => api.post('/customers', d) };
+export const detectionApi = { list: p => api.get('/detections', { params: p }), start: d => api.post('/detections', d) };
+export const deviceApi = { list: p => api.get('/devices', { params: p }), detail: id => api.get('/devices/' + id) };
+export const appointmentApi = { list: p => api.get('/appointments', { params: p }), today: () => api.get('/appointments/today'), create: d => api.post('/appointments', d), confirm: id => api.post('/appointments/' + id + '/confirm') };
+export const planApi = { list: p => api.get('/care-plans', { params: p }), detail: id => api.get('/care-plans/' + id), create: d => api.post('/care-plans', d), generateAdvice: (c, i) => api.post('/advice/generate', { constitution: c, indicators: i }), recommendRecipes: (c, i) => api.post('/recipes/recommend', { constitution: c, issues: i }) };
+export const reportApi = { list: p => api.get('/reports', { params: p }), detail: id => api.get('/reports/' + id) };
+export const dashboardApi = { overview: () => api.get('/performance/dashboard'), staff: p => api.get('/performance/staff', { params: { period: p } }) };
+export const scriptApi = { generate: d => api.post('/scripts/generate', d) };

@@ -1,0 +1,81 @@
+name: Build Desktop (Windows + macOS)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build-windows:
+    name: Windows 桌面端
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Windows installer
+        working-directory: apps/desktop
+        shell: bash
+        run: |
+          npx vite build
+          npx tsc -p electron/tsconfig.json
+          npx electron-builder --win nsis --x64
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-desktop
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.blockmap
+
+  build-macos:
+    name: macOS 桌面端
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build macOS app (Intel + Apple Silicon)
+        working-directory: apps/desktop
+        shell: bash
+        run: |
+          npx vite build
+          npx tsc -p electron/tsconfig.json
+          npx electron-builder --mac dmg zip --x64 --arm64
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-desktop
+          path: |
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip

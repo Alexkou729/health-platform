@@ -1,0 +1,23 @@
+{
+  "name": "@health/device-simulator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Quantum Analyzer 设备模拟器 - 用于开发和演示",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "@health/device-driver": "workspace:*",
+    "ws": "^8.16.0",
+    "socket.io-client": "^4.7.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.11.0",
+    "@types/ws": "^8.5.0",
+    "ts-node": "^10.9.0"
+  }
+}

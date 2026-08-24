@@ -1,0 +1,5 @@
+import { Global, Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ThrottlerModule } from '@nestjs/throttler';

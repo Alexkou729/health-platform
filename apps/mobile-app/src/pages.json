@@ -1,0 +1,115 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {}
+  },
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "健康管理系统",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/detect/index",
+      "style": {
+        "navigationBarTitleText": "智能检测"
+      }
+    },
+    {
+      "path": "pages/detect/process",
+      "style": {
+        "navigationBarTitleText": "60秒检测中",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/customer/list",
+      "style": {
+        "navigationBarTitleText": "我的客户"
+      }
+    },
+    {
+      "path": "pages/customer/detail",
+      "style": {
+        "navigationBarTitleText": "客户详情"
+      }
+    },
+    {
+      "path": "pages/appointment/list",
+      "style": {
+        "navigationBarTitleText": "预约管理"
+      }
+    },
+    {
+      "path": "pages/appointment/create",
+      "style": {
+        "navigationBarTitleText": "新建预约"
+      }
+    },
+    {
+      "path": "pages/plan/list",
+      "style": {
+        "navigationBarTitleText": "调理方案"
+      }
+    },
+    {
+      "path": "pages/plan/detail",
+      "style": {
+        "navigationBarTitleText": "方案详情"
+      }
+    },
+    {
+      "path": "pages/report/list",
+      "style": {
+        "navigationBarTitleText": "检测报告"
+      }
+    },
+    {
+      "path": "pages/report/detail",
+      "style": {
+        "navigationBarTitleText": "报告详情"
+      }
+    },
+    {
+      "path": "pages/my/index",
+      "style": {
+        "navigationBarTitleText": "我的"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "健康管理系统",
+    "navigationBarBackgroundColor": "#10b981",
+    "backgroundColor": "#0f172a"
+  },
+  "tabBar": {
+    "color": "#94a3b8",
+    "selectedColor": "#10b981",
+    "backgroundColor": "#0a0e27",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "工作台"
+      },
+      {
+        "pagePath": "pages/detect/index",
+        "text": "检测"
+      },
+      {
+        "pagePath": "pages/customer/list",
+        "text": "客户"
+      },
+      {
+        "pagePath": "pages/appointment/list",
+        "text": "预约"
+      },
+      {
+        "pagePath": "pages/my/index",
+        "text": "我的"
+      }
+    ]
+  }
+}

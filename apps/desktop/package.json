@@ -1,0 +1,82 @@
+{
+  "name": "@health/desktop",
+  "version": "1.0.0",
+  "description": "Health Platform Desktop App (Electron + Vue 3)",
+  "main": "dist-electron/main.js",
+  "author": "Health Platform Team",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && tsc -p electron/tsconfig.json && electron-builder",
+    "build:dir": "vite build && tsc -p electron/tsconfig.json && electron-builder --dir",
+    "build:win": "vite build && tsc -p electron/tsconfig.json && electron-builder --win nsis --x64",
+    "build:mac": "vite build && tsc -p electron/tsconfig.json && electron-builder --mac dmg zip",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.0",
+    "@health/shared": "workspace:*",
+    "@vueuse/core": "^10.9.0",
+    "axios": "^1.6.0",
+    "dayjs": "^1.11.0",
+    "echarts": "^5.5.0",
+    "element-plus": "^2.6.0",
+    "pinia": "^2.1.0",
+    "qrcode": "^1.5.0",
+    "socket.io-client": "^4.7.0",
+    "vue": "^3.4.0",
+    "vue-echarts": "^7.0.0",
+    "vue-router": "^4.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "electron": "^29.0.0",
+    "electron-builder": "^24.13.0",
+    "sass": "^1.71.0",
+    "typescript": "^5.4.0",
+    "unplugin-auto-import": "^21.1.0",
+    "unplugin-vue-components": "^32.1.0",
+    "vite": "^5.1.0",
+    "vue-tsc": "^2.0.0"
+  },
+  "build": {
+    "appId": "com.health.platform",
+    "productName": "健康管理系统",
+    "copyright": "Copyright 2026",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "build/icon.ico"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false,
+      "signingHashAlgorithms": null,
+      "forceCodeSigning": false,
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "健康管理系统"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.healthcare-fitness",
+      "icon": "build/icon-512.png",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    }
+  }
+}
