@@ -44,6 +44,7 @@ export class OpenAICompatService extends BaseLLMProvider {
         {
           headers: { Authorization: 'Bearer ' + cfg.apiKey, 'Content-Type': 'application/json' },
           timeout: 90000,
+          proxy: false, // AI 供应商国内直连，绕过服务器代理
         },
       );
       const content = res.data?.choices?.[0]?.message?.content;

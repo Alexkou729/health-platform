@@ -11,6 +11,9 @@ export const PERMISSION_DEFS: Array<{ code: string; label: string }> = [
   { code: 'devices', label: '设备管理' },
   { code: 'staff', label: '员工管理' },
   { code: 'marketing', label: '营销中心' },
+  { code: 'products', label: '商品管理' },
+  { code: 'mall-orders', label: '商城订单' },
+  { code: 'home-service-orders', label: '上门服务' },
   { code: 'wechat', label: '微信配置' },
   { code: 'care-plans', label: '调理方案' },
   { code: 'appointments', label: '预约管理' },
@@ -20,6 +23,7 @@ export const PERMISSION_DEFS: Array<{ code: string; label: string }> = [
   { code: 'franchise', label: '加盟管理' },
   { code: 'stores', label: '门店管理' },
   { code: 'settings', label: '系统设置' },
+  { code: 'settlements', label: '结算比例' },
 ];
 
 export function parsePermissions(permissions: any): string[] {
@@ -34,7 +38,7 @@ export function parsePermissions(permissions: any): string[] {
  */
 export const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
   SUPER_ADMIN: [],
-  STORE_ADMIN: ['detection', 'reports', 'comparison', 'customers', 'orders', 'packages', 'devices', 'staff', 'marketing', 'wechat', 'care-plans', 'appointments', 'tasks', 'analytics', 'service-request', 'settings'],
+  STORE_ADMIN: ['detection', 'reports', 'comparison', 'customers', 'orders', 'packages', 'devices', 'staff', 'marketing', 'products', 'mall-orders', 'home-service-orders', 'wechat', 'care-plans', 'appointments', 'tasks', 'analytics', 'service-request', 'settings'],
   DOCTOR: ['detection', 'reports', 'comparison', 'customers', 'care-plans', 'appointments', 'tasks', 'service-request'],
   CONSULTANT: ['detection', 'reports', 'comparison', 'customers', 'care-plans', 'appointments', 'tasks', 'service-request'],
   RECEPTIONIST: ['detection', 'reports', 'customers', 'orders', 'appointments', 'tasks'],

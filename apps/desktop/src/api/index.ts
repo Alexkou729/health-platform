@@ -412,3 +412,33 @@ export const franchiseApi = {
   approveApplication: (id: string, data: any) => api.post('/franchise/applications/' + id + '/approve', data),
   rejectApplication: (id: string, reason?: string) => api.post('/franchise/applications/' + id + '/reject', { reason }),
 };
+export const productApi = {
+  list: (params: any = {}) => api.get('/products', { params }),
+  create: (data: any) => api.post('/products', data),
+  update: (id: string, data: any) => api.put('/products/' + id, data),
+  audit: (id: string, approve: boolean, remark?: string) => api.post('/products/' + id + '/audit', { approve, remark }),
+  remove: (id: string) => api.delete('/products/' + id),
+};
+export const mallOrderApi = {
+  list: (params: any = {}) => api.get('/mall-orders', { params }),
+  accept: (id: string) => api.post('/mall-orders/' + id + '/accept'),
+  ship: (id: string) => api.post('/mall-orders/' + id + '/ship'),
+  complete: (id: string) => api.post('/mall-orders/' + id + '/complete'),
+  cancel: (id: string, reason?: string) => api.post('/mall-orders/' + id + '/cancel', { reason }),
+  pay: (id: string) => api.post('/mall-orders/' + id + '/pay'),
+};
+export const homeServiceApi = {
+  services: (params: any = {}) => api.get('/home-services', { params }),
+  createService: (data: any) => api.post('/home-services', data),
+  orders: (params: any = {}) => api.get('/home-service-orders', { params }),
+  assign: (id: string, storeId: string) => api.post('/home-service-orders/' + id + '/assign', { storeId }),
+  accept: (id: string) => api.post('/home-service-orders/' + id + '/accept'),
+  start: (id: string) => api.post('/home-service-orders/' + id + '/start'),
+  complete: (id: string) => api.post('/home-service-orders/' + id + '/complete'),
+  cancel: (id: string, reason?: string) => api.post('/home-service-orders/' + id + '/cancel', { reason }),
+  pay: (id: string, method: string) => api.post('/home-service-orders/' + id + '/pay', { method }),
+};
+export const settlementApi = {
+  list: () => api.get('/settlements'),
+  set: (storeId: string, ratio: number, remark?: string) => api.post('/settlements', { storeId, ratio, remark }),
+};

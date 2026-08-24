@@ -14,7 +14,7 @@ interface UserInfo {
 }
 
 const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
-  STORE_ADMIN: ['detection', 'reports', 'comparison', 'customers', 'orders', 'packages', 'devices', 'staff', 'marketing', 'wechat', 'care-plans', 'appointments', 'tasks', 'analytics', 'service-request', 'settings'],
+  STORE_ADMIN: ['detection', 'reports', 'comparison', 'customers', 'orders', 'packages', 'devices', 'staff', 'marketing', 'wechat', 'care-plans', 'appointments', 'tasks', 'analytics', 'service-request', 'settings', 'products', 'mall-orders', 'home-service-orders'],
   DOCTOR: ['detection', 'reports', 'comparison', 'customers', 'care-plans', 'appointments', 'tasks', 'service-request'],
   CONSULTANT: ['detection', 'reports', 'comparison', 'customers', 'care-plans', 'appointments', 'tasks', 'service-request'],
   RECEPTIONIST: ['detection', 'reports', 'customers', 'orders', 'appointments', 'tasks'],
