@@ -18,10 +18,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Setup pnpm (via corepack, 匹配项目 packageManager)
-        run: |
-          corepack enable
-          corepack prepare pnpm@8.9.0 --activate
+      - name: Install pnpm (跳过 corepack，直接 npm 装项目指定版本)
+        run: npm install -g pnpm@8.9.0
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Rebuild noble for Electron + win32-x64
         run: |
@@ -48,10 +46,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Setup pnpm (via corepack, 匹配项目 packageManager)
-        run: |
-          corepack enable
-          corepack prepare pnpm@8.9.0 --activate
+      - name: Install pnpm (跳过 corepack，直接 npm 装项目指定版本)
+        run: npm install -g pnpm@8.9.0
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Rebuild noble for Electron + darwin (universal)
         run: |
