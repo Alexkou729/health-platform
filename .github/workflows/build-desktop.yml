@@ -1,24 +1,27 @@
 name: Build Desktop (Windows + macOS)
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
-      - master
+    branches: [master, main]
+    paths:
+      - 'apps/desktop/**'
+      - '.github/workflows/build-desktop.yml'
+  workflow_dispatch:  # 手动触发
 
 jobs:
   build-windows:
-    name: Windows 桌面端
+    name: Windows 桌面端 (.exe)
     runs-on: windows-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
+          cache: 'pnpm'
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -26,35 +29,48 @@ jobs:
           version: 9
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Build Windows installer
-        working-directory: apps/desktop
-        shell: bash
+      - name: Rebuild noble for Electron + win32-x64
         run: |
-          npx vite build
-          npx tsc -p electron/tsconfig.json
-          npx electron-builder --win nsis --x64
+          cd apps/desktop
+          npm rebuild --runtime=electron --target=29.4.6 --dist-url=https://electronjs.org/headers --abi=125
 
-      - name: Upload Windows artifact
+      - name: Build renderer (vite) + main process (tsc)
+        run: cd apps/desktop && npx vite build && npx tsc -p electron/tsconfig.json
+
+      - name: Build Windows NSIS installer (x64)
+        run: cd apps/desktop && npx electron-builder --win nsis --x64
+        env:
+          # 关闭签名（内部分发）
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: List artifacts
+        shell: bash
+        run: ls -lh apps/desktop/release/*.exe apps/desktop/release/*.blockmap 2>/dev/null || ls -lh apps/desktop/release/
+
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: windows-desktop
+          name: health-platform-windows-${{ github.sha }}
           path: |
             apps/desktop/release/*.exe
             apps/desktop/release/*.blockmap
+          if-no-files-found: warn
 
   build-macos:
-    name: macOS 桌面端
+    name: macOS 桌面端 (.zip · x64 + arm64)
     runs-on: macos-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
+          cache: 'pnpm'
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -62,20 +78,31 @@ jobs:
           version: 9
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Build macOS app (Intel + Apple Silicon)
-        working-directory: apps/desktop
-        shell: bash
+      - name: Rebuild noble for Electron + darwin (universal)
         run: |
-          npx vite build
-          npx tsc -p electron/tsconfig.json
-          npx electron-builder --mac dmg zip --x64 --arm64
+          cd apps/desktop
+          # noble 同时构建 x64 + arm64 的 darwin native module
+          npm rebuild --runtime=electron --target=29.4.6 --dist-url=https://electronjs.org/headers --abi=125
+
+      - name: Build renderer (vite) + main process (tsc)
+        run: cd apps/desktop && npx vite build && npx tsc -p electron/tsconfig.json
+
+      - name: Build macOS .app + .zip (Intel + Apple Silicon)
+        run: cd apps/desktop && npx electron-builder --mac zip --x64 --arm64
+        env:
+          # 不强制签名（内部分发，同事首次右键 Open 即可）
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: List artifacts
+        run: ls -lh apps/desktop/release/*.zip apps/desktop/release/*.dmg 2>/dev/null || ls -lh apps/desktop/release/
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: macos-desktop
+          name: health-platform-macos-${{ github.sha }}
           path: |
-            apps/desktop/release/*.dmg
             apps/desktop/release/*.zip
+            apps/desktop/release/mac-*/健康管理系统.app
+          if-no-files-found: warn

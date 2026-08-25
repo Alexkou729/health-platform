@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { scopedWhere, isHeadOffice, genNo } from '../../common/utils/scope';
 import { AIService } from '../ai/ai.service';
 import { AiSettingsService } from '../ai/ai-settings.service';
@@ -13,6 +13,7 @@ const PRICING: Record<string, number> = {
 
 @Injectable()
 export class FranchiseService {
+  private readonly logger = new Logger(FranchiseService.name);
   constructor(
     @Inject('PRISMA_CLIENT') private readonly prisma: any,
     private readonly aiService: AIService,
@@ -149,22 +150,11 @@ export class FranchiseService {
     const req = await this.ensureRequest(id);
     if (!['PENDING', 'PROCESSING'].includes(req.status)) throw new BadRequestException('该工单当前状态不可完成');
 
-    // AI 报告：尝试自动调用 AI 生成解读
+    // AI 报告：不再在受理时生成，改为“门店提交 → 总部收款后生成解读”
     let resultPayload = result || null;
     if (req.type === 'AI_REPORT') {
       const reportId = this.payloadField(req.payload, 'reportId') || (req.customerId ? await this.findLatestReportId(req.customerId) : null);
-      if (reportId) {
-        try {
-          const ai = await this.aiService.interpretReport(reportId);
-          resultPayload = { summary: ai.interpretation, reportId, provider: ai.provider, interpretationId: ai.interpretationId };
-        } catch (e) {
-          // AI 未配置密钥或调用失败时，回退为人工结果
-          resultPayload = resultPayload || { summary: 'AI 服务暂不可用，请人工解读后填写', error: e.message };
-        }
-      }
-      await this.prisma.aIUsage.create({
-        data: { storeId: req.storeId, customerId: req.customerId, type: 'AI', provider: 'tongyi', cost: req.totalAmount },
-      });
+      resultPayload = resultPayload || { reportId, status: 'AWAITING_PAYMENT', message: '门店已提交，待总部收款后自动生成 AI 解读' };
     }
     if (req.type === 'CARE_PLAN') {
       if (req.customerId) {
@@ -261,10 +251,33 @@ export class FranchiseService {
     if (!isHeadOffice(user)) throw new ForbiddenException('仅总部可登记收款');
     const invoice = await this.prisma.invoice.findUnique({ where: { id } });
     if (!invoice) throw new NotFoundException('账单不存在');
-    return this.prisma.invoice.update({
+    const paid = await this.prisma.invoice.update({
       where: { id },
       data: { status: 'PAID', paidAmount: invoice.amount, paymentMethod: method || 'BANK', paidAt: new Date() },
     });
+    // 收款后自动生成 AI 解读（AI 服务账单）
+    if (invoice.type === 'AI_SERVICE') {
+      const req = await this.prisma.serviceRequest.findFirst({ where: { referenceId: invoice.id } });
+      if (req) {
+        const reportId = this.payloadField(req.payload, 'reportId') || (req.customerId ? await this.findLatestReportId(req.customerId) : null);
+        if (reportId) {
+          try {
+            const ai = await this.aiService.interpretReportStructured(reportId);
+            await this.prisma.serviceRequest.update({
+              where: { id: req.id },
+              data: { result: JSON.stringify({ reportId, structured: ai.structured, provider: ai.provider, interpretationId: ai.interpretationId }) },
+            });
+            await this.prisma.aIUsage.create({
+              data: { storeId: req.storeId, customerId: req.customerId, type: 'AI', provider: ai.provider, cost: req.totalAmount },
+            }).catch(() => null);
+            this.logger.log('收款后已生成 AI 解读: ' + reportId);
+          } catch (e: any) {
+            this.logger.error('收款后生成 AI 解读失败: ' + e.message);
+          }
+        }
+      }
+    }
+    return paid;
   }
 
   // ============================================================

@@ -14,6 +14,7 @@ const routes = [
       { path: 'dashboard', component: () => import('@/views/Dashboard.vue'), meta: { title: '运营看板', icon: 'Odometer' } },
       { path: 'detection', component: () => import('@/views/Detection.vue'), meta: { title: '检测中心', icon: 'Aim' } },
       { path: 'reports', component: () => import('@/views/Reports.vue'), meta: { title: '报告中心', icon: 'Document' } },
+      { path: 'body-composition', component: () => import('@/views/BodyComposition.vue'), meta: { title: '体成分管理', icon: 'DataLine' } },
       { path: 'comparison', component: () => import('@/views/Comparison.vue'), meta: { title: '历史对比', icon: 'DataAnalysis' } },
       { path: 'customers', component: () => import('@/views/Customers.vue'), meta: { title: '客户管理', icon: 'User' } },
       { path: 'orders', component: () => import('@/views/Orders.vue'), meta: { title: '订单管理', icon: 'List' } },

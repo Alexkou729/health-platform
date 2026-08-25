@@ -60,4 +60,9 @@ export class DetectionController {
   async findOne(@CurrentUser() user: any, @Param('id') id) {
     return this.service.findOne(id, user);
   }
+  @Post('import')
+  @ApiOperation({ summary: '导入原版软件检测报告（真实数据）' })
+  async import(@CurrentUser() user: any, @Body() body: any) {
+    return this.service.importReports(user, body);
+  }
 }

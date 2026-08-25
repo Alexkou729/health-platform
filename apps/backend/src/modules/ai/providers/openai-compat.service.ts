@@ -26,6 +26,52 @@ export class OpenAICompatService extends BaseLLMProvider {
     yield text;
   }
 
+  /**
+   * 结构化 JSON 输出：请求模型以 JSON 对象返回，自动解析。
+   * 若模型未开启 json_object 或返回非 JSON，则尽力从代码块中提取。
+   */
+  async chatJSON(prompt: string, options: ChatOptions = {}): Promise<any> {
+    const text = await this.call([{ role: 'user', content: prompt }], { ...options, responseFormat: 'json_object' });
+    return this.parseJSON(text);
+  }
+
+  private parseJSON(text: string): any {
+    if (!text) return {};
+    const raw = String(text).trim();
+    // 扫描所有平衡的 { ... }，挑最大的且能 JSON.parse 的（最外层对象）
+    const candidates: { len: number; parsed: any }[] = [];
+    for (let i = 0; i < raw.length; i++) {
+      if (raw[i] !== '{') continue;
+      let depth = 0, inStr = false, esc = false, end = -1;
+      for (let j = i; j < raw.length; j++) {
+        const ch = raw[j];
+        if (inStr) {
+          if (esc) esc = false;
+          else if (ch === '\\') esc = true;
+          else if (ch === '"') inStr = false;
+          continue;
+        }
+        if (ch === '"') { inStr = true; continue; }
+        if (ch === '{') depth++;
+        else if (ch === '}') {
+          depth--;
+          if (depth === 0) { end = j; break; }
+        }
+      }
+      if (end === -1) continue;
+      const sub = raw.slice(i, end + 1);
+      if (sub.length < 50) continue; // 太小的可能是推理里的零散 {}
+      try { candidates.push({ len: sub.length, parsed: JSON.parse(sub) }); }
+      catch { /* skip */ }
+    }
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => b.len - a.len);
+      return candidates[0].parsed;
+    }
+    // 兜底
+    return { raw };
+  }
+
   private async call(messages: any[], options: ChatOptions): Promise<string> {
     const cfg = await this.settings.get();
     const baseURL = (cfg.baseUrl || '').replace(/\/+$/, '');
@@ -40,6 +86,7 @@ export class OpenAICompatService extends BaseLLMProvider {
           messages: [{ role: 'system', content: this.buildSystemPrompt() }, ...messages],
           temperature: options.temperature ?? 0.4,
           max_tokens: options.maxTokens || 2000,
+          ...(options.responseFormat === 'json_object' ? { response_format: { type: 'json_object' } } : {}),
         },
         {
           headers: { Authorization: 'Bearer ' + cfg.apiKey, 'Content-Type': 'application/json' },

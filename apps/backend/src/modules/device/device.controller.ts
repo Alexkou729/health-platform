@@ -46,4 +46,10 @@ export class DeviceController {
   async bind(@Body() body: { deviceNo: string; storeId: string; expiresAt?: string }) {
     return this.service.bind(body.deviceNo, body.storeId, body.expiresAt);
   }
+
+  @Post('sync')
+  @ApiOperation({ summary: '批量自动识别入库设备' })
+  async sync(@CurrentUser() user: any, @Body() body: { devices: any[] }) {
+    return this.service.syncDevices(user, body.devices);
+  }
 }

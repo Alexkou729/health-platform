@@ -19,6 +19,46 @@ export class AIService {
     return this.generateInterpretation(this.parseReportForAI(report), options);
   }
 
+  /**
+   * 结构化 JSON 解读：返回固定 schema，供报告生成器直接消费，
+   * 并落库到 AIInterpretation.advice（JSON）。
+   */
+  async interpretReportStructured(reportId: string, options: { provider?: AIProvider } = {}) {
+    const report = await this.prisma.report.findUnique({ where: { id: reportId }, include: { detection: { include: { customer: true } } } });
+    if (!report) throw new Error('报告不存在');
+    const cfg = await this.settings.get();
+    const provider = options.provider || (cfg.provider as AIProvider) || 'minimax';
+    const prompt = this.buildStructuredPrompt(this.parseReportForAI(report));
+    const startTime = Date.now();
+    try {
+      const structured = await this.getProvider(provider).chatJSON(prompt, { temperature: 0.3, maxTokens: 5000 });
+      const duration = Date.now() - startTime;
+      const storeId = report.detection?.storeId || report.customer?.storeId || null;
+      let interpretationId: string | null = null;
+      if (storeId && report.customerId) {
+        const saved = await this.prisma.aIInterpretation.create({
+          data: {
+            reportId: report.id,
+            customerId: report.customerId,
+            storeId,
+            provider,
+            type: 'AI',
+            status: 'COMPLETED',
+            content: JSON.stringify(structured),
+            summary: String(structured?.overallAssessment || '').slice(0, 200),
+            advice: JSON.stringify({ structured }),
+            durationMs: duration,
+          },
+        }).catch(() => null);
+        interpretationId = saved?.id || null;
+      }
+      return { reportId: report.id, provider, duration, structured, interpretationId, cached: false };
+    } catch (e: any) {
+      this.logger.error('AI 结构化解读失败 [' + provider + ']:', e.message);
+      throw new Error('AI 结构化解读失败: ' + e.message);
+    }
+  }
+
   async *interpretReportStream(reportId: string, provider: AIProvider = 'minimax') {
     const report = await this.prisma.report.findUnique({ where: { id: reportId }, include: { detection: { include: { customer: true } } } });
     if (!report) throw new Error('报告不存在');
@@ -102,6 +142,39 @@ export class AIService {
     }
     r.customer = r.detection?.customer || null;
     return r;
+  }
+
+  /** 结构化报告生成提示词（返回固定 JSON schema） */
+  private buildStructuredPrompt(report: any): string {
+    const customer = report.customer;
+    const indicators = (report.indicators || []).filter((i: any) => i.status >= 1);
+    const constitutionMap: Record<string, string> = {
+      BALANCED: '平和质', QI_DEFICIENCY: '气虚质', YANG_DEFICIENCY: '阳虚质',
+      YIN_DEFICIENCY: '阴虚质', PHLEGM_DAMPNESS: '痰湿质', DAMPNESS_HEAT: '湿热质',
+      BLOOD_STASIS: '血瘀质', QI_STAGNATION: '气郁质', SPECIAL: '特禀质',
+    };
+    let tags: string[] = [];
+    try { tags = JSON.parse(customer?.tags || '[]'); } catch {}
+    const constitution = constitutionMap[tags[0]] || '未知';
+    const indicatorText = indicators.map((i: any) => '- ' + i.name + ': ' + i.value + i.unit + ' (标准 ' + i.referenceRange + i.unit + ') [' + this.statusText(i.status) + ']').join('\n') || '无明显异常';
+    return '你是一位资深中医健康管理师。请根据以下检测数据，输出 JSON 格式的健康评估与调理方案。\n\n' +
+      '【客户信息】\n姓名：' + (customer?.name || '客户') + '；性别：' + (customer?.gender === 1 ? '男' : customer?.gender === 2 ? '女' : '未知') + '；年龄：' + (customer?.age || '未知') + '岁\n\n' +
+      '【检测报告】\n报告类型：' + report.title + '\n综合评分：' + report.score + '分\n体质：' + constitution + '\n\n' +
+      '【异常指标】\n' + indicatorText + '\n\n' +
+      '【原始结论】\n' + (report.conclusion || '无') + '\n\n' +
+      '请严格按以下 JSON schema 输出（不要输出任何额外文字，只输出 JSON 对象）：\n' +
+      JSON.stringify({
+        overallAssessment: '整体评估(150-200字，通俗总结身体状态)',
+        constitutionAnalysis: '体质解读(200-300字，中医角度讲特征/成因/影响)',
+        keyFindings: ['3-5条关键发现'],
+        risks: [{ indicator: '异常指标名', level: '高|中|低', advice: '针对性建议' }],
+        diet: [{ item: '食物', type: '宜|忌', reason: '原因' }],
+        exercise: [{ type: '运动类型', intensity: '强度', frequency: '频率', duration: '时长' }],
+        lifestyle: ['3条生活作息建议'],
+        meridians: [{ name: '穴位名', method: '按摩方法' }],
+        therapies: [{ name: '理疗项目', frequency: '频次' }],
+        followUp: { days: 30, watchIndicators: ['重点观察指标'] }
+      }, null, 2);
   }
 
   private buildPrompt(report: any): string {

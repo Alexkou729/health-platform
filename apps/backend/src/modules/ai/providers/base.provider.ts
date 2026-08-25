@@ -1,5 +1,5 @@
 import { Logger } from "@nestjs/common";
-export interface ChatOptions { temperature?: number; maxTokens?: number; model?: string; systemPrompt?: string; }
+export interface ChatOptions { temperature?: number; maxTokens?: number; model?: string; systemPrompt?: string; responseFormat?: 'json_object' | 'text'; }
 export abstract class BaseLLMProvider {
   protected readonly logger = new Logger(this.constructor.name);
   abstract chat(prompt: string, options?: ChatOptions): Promise<string>;

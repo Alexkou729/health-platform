@@ -20,11 +20,17 @@
     <div class="main-container">
       <!-- 侧边栏 -->
       <aside class="sidebar glass-card">
-        <el-menu :default-active="route.path" router>
-          <el-menu-item v-for="item in menuItems" :key="item.path" :index="item.path">
-            <el-icon><component :is="item.icon" /></el-icon>
-            <span>{{ item.title }}</span>
-          </el-menu-item>
+        <el-menu :default-active="route.path" :default-openeds="openedGroups" router>
+          <el-sub-menu v-for="group in menuGroups" :key="group.title" :index="group.title">
+            <template #title>
+              <el-icon class="group-icon"><component :is="group.icon" /></el-icon>
+              <span class="group-title">{{ group.title }}</span>
+            </template>
+            <el-menu-item v-for="item in group.items" :key="item.path" :index="item.path">
+              <el-icon><component :is="item.icon" /></el-icon>
+              <span>{{ item.title }}</span>
+            </el-menu-item>
+          </el-sub-menu>
         </el-menu>
 
         <div class="user-info glass-card" style="margin-top: auto">
@@ -49,9 +55,11 @@
 
       <!-- 内容区 -->
       <main class="content">
-        <router-view v-slot="{ Component }">
+        <router-view v-slot="{ Component, route: r }">
           <transition name="fade" mode="out-in">
-            <component :is="Component" />
+            <keep-alive>
+              <component :is="Component" :key="r.path" />
+            </keep-alive>
           </transition>
         </router-view>
       </main>
@@ -64,6 +72,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessageBox, ElMessage } from 'element-plus';
 import { useAuthStore } from '@/stores/auth';
+import 'element-plus/es/components/sub-menu/style/css';
 import pkg from '../../package.json';
 
 const router = useRouter();
@@ -87,14 +96,71 @@ onUnmounted(() => {
   if (timer) clearInterval(timer);
 });
 
-const menuItems = computed(() => {
-  const all = router.options.routes[1].children || [];
-  return all
-    .filter((r: any) => {
-      if (r.meta?.roles && !r.meta.roles.includes(authStore.user?.role)) return false;
-      return authStore.can(r.path);
-    })
-    .map((r: any) => ({ path: '/' + r.path, title: r.meta?.title, icon: r.meta?.icon }));
+// 路由 → 分组映射（7 大业务板块，24 个模块）
+const ROUTE_GROUP: Record<string, string> = {
+  dashboard: '工作台',
+  tasks: '工作台',
+  customers: '客户中心',
+  detection: '客户中心',
+  reports: '客户中心',
+  'body-composition': '客户中心',
+  comparison: '客户中心',
+  appointments: '服务交付',
+  'care-plans': '服务交付',
+  'service-request': '服务交付',
+  'home-service-orders': '服务交付',
+  products: '商品订单',
+  'mall-orders': '商品订单',
+  packages: '商品订单',
+  orders: '商品订单',
+  marketing: '商品订单',
+  franchise: '加盟运营',
+  stores: '加盟运营',
+  staff: '加盟运营',
+  settlements: '加盟运营',
+  analytics: '数据设备',
+  devices: '数据设备',
+  wechat: '系统设置',
+  settings: '系统设置',
+};
+
+const GROUP_ICONS: Record<string, string> = {
+  '工作台': 'Odometer',
+  '客户中心': 'User',
+  '服务交付': 'FirstAidKit',
+  '商品订单': 'ShoppingCart',
+  '加盟运营': 'OfficeBuilding',
+  '数据设备': 'DataAnalysis',
+  '系统设置': 'Setting',
+};
+
+const menuGroups = computed(() => {
+  const groups: { title: string; icon: string; items: any[] }[] = [
+    { title: '工作台', icon: GROUP_ICONS['工作台'], items: [] },
+    { title: '客户中心', icon: GROUP_ICONS['客户中心'], items: [] },
+    { title: '服务交付', icon: GROUP_ICONS['服务交付'], items: [] },
+    { title: '商品订单', icon: GROUP_ICONS['商品订单'], items: [] },
+    { title: '加盟运营', icon: GROUP_ICONS['加盟运营'], items: [] },
+    { title: '数据设备', icon: GROUP_ICONS['数据设备'], items: [] },
+    { title: '系统设置', icon: GROUP_ICONS['系统设置'], items: [] },
+  ];
+  const allRoutes = router.options.routes[1].children || [];
+  for (const r of allRoutes) {
+    if (r.meta?.roles && !r.meta.roles.includes(authStore.user?.role)) continue;
+    if (!authStore.can(r.path)) continue;
+    const groupTitle = ROUTE_GROUP[r.path];
+    if (!groupTitle) continue;
+    const g = groups.find((x) => x.title === groupTitle);
+    if (g) g.items.push({ path: '/' + r.path, title: r.meta?.title, icon: r.meta?.icon });
+  }
+  return groups.filter((g) => g.items.length > 0);
+});
+
+// 默认展开当前路由所在的分组
+const openedGroups = computed(() => {
+  const current = route.path.replace(/^\//, '');
+  const groupTitle = ROUTE_GROUP[current];
+  return groupTitle ? [groupTitle] : [];
 });
 
 const roleText = computed(() => {
@@ -176,7 +242,7 @@ async function logout() {
 }
 
 .sidebar {
-  width: 220px;
+  width: 232px;
   margin: 12px;
   margin-right: 0;
   padding: 16px 12px;
@@ -184,6 +250,10 @@ async function logout() {
   flex-direction: column;
   overflow-y: auto;
 }
+
+.el-submenu .group-icon { font-size: 16px; margin-right: 6px; }
+.el-submenu .group-title { font-weight: 600; font-size: 13px; letter-spacing: 1px; }
+.el-submenu__title { height: 38px; line-height: 38px; }
 
 .user-info {
   display: flex;

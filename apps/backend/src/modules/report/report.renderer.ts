@@ -41,11 +41,20 @@ export class ReportRenderer {
     const score = report.score || 0;
     const scoreColor = score >= 85 ? '#10b981' : score >= 70 ? '#f59e0b' : '#ef4444';
     const indicators = Array.isArray(report.indicators) ? report.indicators : [];
-    const suggestions = Array.isArray(report.suggestions) ? report.suggestions : [];
+    let suggestions: string[] = [];
+    let homeCareAdvice: string[] = [];
+    if (Array.isArray(report.suggestions)) {
+      suggestions = report.suggestions;
+    } else if (report.suggestions && typeof report.suggestions === 'object') {
+      suggestions = Array.isArray(report.suggestions.general) ? report.suggestions.general : [];
+      homeCareAdvice = Array.isArray(report.suggestions.homeCareAdvice) ? report.suggestions.homeCareAdvice : [];
+    }
     const warnings = Array.isArray(report.warnings) ? report.warnings : [];
     const highlights = Array.isArray(report.highlights) ? report.highlights : [];
 
-    const indicatorHtml = indicators.map(ind => {
+    // 居家调理仅作为归档建议文字，不在检测明细体现
+    const realIndicators = indicators.filter((i: any) => i?.name !== '居家调理');
+    const indicatorHtml = realIndicators.map(ind => {
       const cls = ind.status === 0 ? 'normal' : ind.status >= 3 ? 'abnormal' : 'slight';
       const pct = Math.min(100, Math.max(0, ((ind.value - 50) / 50) * 100));
       return '<div class="indicator ' + cls + '">' +
@@ -102,6 +111,7 @@ export class ReportRenderer {
       '<div class="section"><h2>📊 关键指标</h2><div class="indicator-grid">' + indicatorHtml + '</div></div>' +
       (warnings.length > 0 ? '<div class="section"><h2>⚠️ 重点关注</h2><ul class="warnings">' + warnings.map(w => '<li>' + w + '</li>').join('') + '</ul></div>' : '') +
       '<div class="section"><h2>💡 健康建议</h2><ul class="suggestions">' + suggestions.map(s => '<li>' + s + '</li>').join('') + '</ul></div>' +
+      (homeCareAdvice.length > 0 ? '<div class="section"><h2>🏠 居家调理建议</h2><ul class="suggestions">' + homeCareAdvice.map(s => '<li>' + s + '</li>').join('') + '</ul></div>' : '') +
       '<div class="footer"><p>本检测结果仅供参考，不作为诊断结论。</p><p style="margin-top:8px">健康管理系统 · Powered by Codex Health Platform</p></div>' +
       '</div></body></html>';
   }

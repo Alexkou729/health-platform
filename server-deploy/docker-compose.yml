@@ -110,6 +110,31 @@ services:
       - ./ssl:/etc/nginx/ssl:ro
       - ./logs:/var/log/nginx
 
+  backend:
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  postgres:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1.5G
+
+  redis:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+
 volumes:
   postgres_data:
   redis_data:

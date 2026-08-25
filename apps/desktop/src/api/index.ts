@@ -283,9 +283,11 @@ export const detectionApi = {
 };
 export const reportApi = {
   list: (params: any = {}) => api.get('/reports', { params }),
+  templates: () => api.get('/reports/templates'),
   detail: (id: string) => api.get('/reports/' + id),
   send: (id: string) => api.post('/reports/' + id + '/send'),
   interpret: (id: string) => api.post('/ai/interpret/' + id),
+  interpretStructured: (id: string) => api.post('/ai/interpret/' + id + '/structured'),
   htmlUrl: (id: string) => api.defaults.baseURL + '/reports/' + id + '/html?token=' + (localStorage.getItem('access_token') || ''),
   pdfUrl: (id: string) => api.defaults.baseURL + '/reports/' + id + '/pdf?token=' + (localStorage.getItem('access_token') || ''),
   comparison: (customerId: string, templateCode: string) => api.get('/reports/comparison/' + customerId, { params: { templateCode } }),
@@ -298,6 +300,7 @@ export const deviceApi = {
   update: (id: string, data: any) => api.put('/devices/' + id, data),
   remove: (id: string) => api.delete('/devices/' + id),
   statistics: () => api.get('/devices/statistics'),
+  sync: (devices: any[]) => api.post('/devices/sync', { devices }),
 };
 export const packageApi = {
   list: (params: any = {}) => api.get('/packages', { params }),

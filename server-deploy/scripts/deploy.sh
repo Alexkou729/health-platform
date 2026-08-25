@@ -163,6 +163,20 @@ echo "下一步："
 echo "  1. 配置域名解析到本机公网 IP"
 echo "  2. 申请 SSL 证书 (阿里云免费 DV SSL)"
 echo "  3. 启动 Nginx: cd $APP_DIR && docker-compose --profile with-nginx up -d"
+# 生成强 admin 密码（首次部署强制；写入 .env 用于后端启动）
+ADMIN_PASS=$(openssl rand -base64 18 | tr -d '=+/' | head -c 20)
+echo "DEFAULT_ADMIN_PASSWORD=$ADMIN_PASS" >> .env
+
+echo ""
+echo "=========================================="
+echo "  🔐 首次部署 - 自动生成 admin 强密码"
+echo "=========================================="
+echo "  账号: admin"
+echo "  密码: $ADMIN_PASS"
+echo "  ⚠️  请立即记录，关闭此终端后将无法找回！"
+echo "  📝 登录后请在「系统设置 → 修改密码」中改为自己的强密码。"
+echo "=========================================="
+echo ""
 echo "  4. 桌面应用配置 API 地址为: https://your-domain.com/api"
 echo ""
 echo "查看日志: cd $APP_DIR && docker-compose logs -f backend"

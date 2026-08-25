@@ -27,21 +27,89 @@ export class DeviceService {
 
   async create(data, user?: any) {
     if (!data.storeId) data.storeId = user?.storeId;
-    const secret = randomBytes(24).toString('hex');
-    const expiresAt = data.expiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
-    return this.prisma.device.create({ data: { ...data, secret, expiresAt } });
+    if (!data.storeId) {
+      const store = await this.prisma.store.findFirst();
+      if (store) data.storeId = store.id;
+    }
+    const deviceNo = String(data.deviceNo).slice(0, 64);
+    const expiresAt = data.expiresAt ? new Date(data.expiresAt) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+    const fields = {
+      deviceNo,
+      vendor: data.vendor || 'Quantum',
+      model: data.model || 'QA-13',
+      hidVendorId: data.hidVendorId ? Number(data.hidVendorId) : null,
+      hidProductId: data.hidProductId ? Number(data.hidProductId) : null,
+      storeId: data.storeId,
+      status: 1,
+      expiresAt,
+      firmwareVersion: data.firmwareVersion || '1.0.0',
+      remark: data.remark || null,
+    };
+    // 幂等：同编号设备重复添加时改为更新（不重置密钥）
+    const existing = await this.prisma.device.findUnique({ where: { deviceNo } });
+    if (existing) {
+      return this.prisma.device.update({ where: { deviceNo }, data: fields });
+    }
+    return this.prisma.device.create({ data: { ...fields, secret: randomBytes(24).toString('hex') } });
+  }
+
+  /** 批量自动识别入库：按 deviceNo 幂等 upsert，返回全部设备 */
+  async syncDevices(user: any, devices: any[]) {
+    const storeId = user?.storeId;
+    const results = [];
+    for (const d of devices || []) {
+      if (!d?.deviceNo) continue;
+      const deviceNo = String(d.deviceNo).slice(0, 64);
+      const existed = await this.prisma.device.findUnique({ where: { deviceNo } });
+      if (existed) {
+        // 已存在：恢复在线状态（修复解绑/卡检测后重新识别不恢复的问题）
+        if (existed.status !== 1) {
+          await this.prisma.device.update({ where: { id: existed.id }, data: { status: 1 } }).catch(() => null);
+          existed.status = 1;
+        }
+        results.push(existed);
+        continue;
+      }
+      const created = await this.prisma.device.create({
+        data: {
+          deviceNo,
+          vendor: d.vendor || 'Quantum',
+          model: d.model || 'QA-13',
+          hidVendorId: d.vendorId ? Number(d.vendorId) : null,
+          hidProductId: d.productId ? Number(d.productId) : null,
+          storeId: storeId || null,
+          status: 1,
+          secret: randomBytes(24).toString('hex'),
+          expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          boundAt: new Date(),
+        },
+      }).catch(() => null);
+      if (created) results.push(created);
+    }
+    return { registered: results.length, devices: results };
   }
 
   async update(id, data, user?: any) {
     const d = await this.prisma.device.findUnique({ where: scopedWhere(user, { id }), select: { id: true } });
     if (!d) throw new NotFoundException('设备不存在');
-    return this.prisma.device.update({ where: scopedWhere(user, { id }), data });
+    const upd: any = {};
+    if (data.deviceNo !== undefined) upd.deviceNo = String(data.deviceNo);
+    if (data.vendor !== undefined) upd.vendor = data.vendor;
+    if (data.model !== undefined) upd.model = data.model;
+    if (data.hidVendorId !== undefined) upd.hidVendorId = data.hidVendorId ? Number(data.hidVendorId) : null;
+    if (data.hidProductId !== undefined) upd.hidProductId = data.hidProductId ? Number(data.hidProductId) : null;
+    if (data.storeId !== undefined) upd.storeId = data.storeId;
+    if (data.firmwareVersion !== undefined) upd.firmwareVersion = data.firmwareVersion;
+    if (data.remark !== undefined) upd.remark = data.remark;
+    if (data.expiresAt !== undefined) upd.expiresAt = data.expiresAt ? new Date(data.expiresAt) : null;
+    return this.prisma.device.update({ where: scopedWhere(user, { id }), data: upd });
   }
 
   async remove(id, user?: any) {
     const d = await this.prisma.device.findUnique({ where: scopedWhere(user, { id }), select: { id: true } });
     if (!d) throw new NotFoundException('设备不存在');
-    return this.prisma.device.delete({ where: scopedWhere(user, { id }) });
+    // 软解绑：置为离线，不硬删（保留历史检测数据，避免外键冲突）
+    return this.prisma.device.update({ where: scopedWhere(user, { id }), data: { status: 0, lastHeartbeatAt: null } });
   }
 
   async heartbeat(deviceNo) {

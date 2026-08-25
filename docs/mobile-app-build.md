@@ -210,3 +210,7 @@ A: minSdkVersion 设为 21 (Android 5.0+)
 - 技术问题：提交 GitHub Issue
 - 打包问题：参考 uni-app 官方文档 https://uniapp.dcloud.net.cn/tutorial/mobile-app/package.html
 
+
+---
+
+> 📌 **本系统的最新功能与状态（v1.1）请以 上线交付/00-更新日志-最新功能与状态.md 为准**。

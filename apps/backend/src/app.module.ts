@@ -18,6 +18,7 @@ import { StaffModule } from './modules/staff/staff.module';
 import { StoreModule } from './modules/store/store.module';
 import { WechatModule } from './modules/wechat/wechat.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { OriginalSystemModule } from './modules/original-system/original-system.module';
 import { HealthModule } from './modules/health/health.module';
 import { RecipeModule } from './modules/recipe/recipe.module';
 import { AppointmentModule } from './modules/appointment/appointment.module';
@@ -33,6 +34,7 @@ import { MallOrderModule } from './modules/mall-order/mall-order.module';
 import { HomeServiceModule } from './modules/home-service/home-service.module';
 import { SettlementModule } from './modules/settlement/settlement.module';
 import { ClientModule } from './modules/client/client.module';
+import { BodyCompositionModule } from './modules/body-composition/body-composition.module';
 
 @Module({
   imports: [
@@ -48,9 +50,12 @@ import { ClientModule } from './modules/client/client.module';
     PrismaModule, RedisModule, MinioModule,
     AuthModule, CustomerModule, DetectionModule, ReportModule, DeviceModule,
     PackageModule, OrderModule, StaffModule, StoreModule, WechatModule,
-    DashboardModule, HealthModule, AIModule, RecipeModule, AppointmentModule, TaskModule,
+    DashboardModule,
+    OriginalSystemModule, HealthModule, AIModule, RecipeModule, AppointmentModule, TaskModule,
     ScriptModule, PerformanceModule, PaymentModule,
     FranchiseModule, CouponModule, ProductModule, MallOrderModule, HomeServiceModule, SettlementModule, ClientModule,
+    BodyCompositionModule,
   ],
 })
 export class AppModule {}
+

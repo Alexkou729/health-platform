@@ -100,6 +100,21 @@ export class ReportService {
     return this.parseReport({ ...report, customer: report.detection?.customer || null });
   }
 
+  async remove(id: string, user?: any) {
+    // 仅店铺超级管理员(STORE_ADMIN)与总部超级管理员(SUPER_ADMIN)可删除，避免误删
+    if (user && user.role !== 'SUPER_ADMIN' && user.role !== 'STORE_ADMIN') {
+      throw new ForbiddenException('仅店铺管理员或总部可删除报告');
+    }
+    const where: any = { id };
+    if (user && user.role !== 'SUPER_ADMIN' && user.storeId) {
+      where.detection = { storeId: user.storeId };
+    }
+    const report = await this.prisma.report.findUnique({ where });
+    if (!report) throw new NotFoundException('报告不存在');
+    await this.prisma.report.delete({ where: { id } });
+    return { ok: true };
+  }
+
   private parseReport(r: any) {
     if (!r) return r;
     for (const key of ['indicators', 'suggestions', 'warnings', 'highlights']) {

@@ -1,8 +1,9 @@
-import { Controller, Get, Param, Post, Query, UseGuards, Res } from '@nestjs/common';
+import { Controller, Get, Param, Post, Query, UseGuards, Res, Delete } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { ReportService } from './report.service';
 import { ReportRenderer } from './report.renderer';
+import { ReportEngine } from './report.engine';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -17,6 +18,7 @@ export class ReportController {
   constructor(
     private readonly service: ReportService,
     private readonly renderer: ReportRenderer,
+    private readonly engine: ReportEngine,
   ) {}
 
   @Get()
@@ -31,6 +33,12 @@ export class ReportController {
       page: +page, pageSize: +pageSize, customerId, templateCode,
       status: status !== undefined ? +status : undefined, startDate, endDate, storeId,
     });
+  }
+
+  @Get('templates')
+  @ApiOperation({ summary: '检测种类模板（性别/年龄适用性）' })
+  async templates() {
+    return this.engine.getTemplates();
   }
 
   @Get('statistics')
@@ -49,6 +57,12 @@ export class ReportController {
   @ApiOperation({ summary: '报告详情' })
   async findOne(@CurrentUser() user: any, @Param('id') id: string) {
     return this.service.findOne(id, user);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: '删除报告' })
+  async remove(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.service.remove(id, user);
   }
 
   @Post(':id/send')

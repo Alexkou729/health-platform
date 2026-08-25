@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./health.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ============================================
@@ -57,7 +57,7 @@ model Store {
   devices       Device[]
   packages      Package[]
   orders        Order[]
-  detections    Detection[]
+  detections      Detection[]
   coupons       Coupon[]
   carePlans     CarePlan[]
   appointments  Appointment[]
@@ -153,6 +153,7 @@ model Customer {
   updatedAt       DateTime  @updatedAt
 
   detections            Detection[]
+  bodyCompositions      BodyComposition[]
   orders                Order[]
   coupons               CustomerCoupon[]
   measurements          Measurement[]
@@ -227,6 +228,7 @@ model DeviceHeartbeat {
 model Detection {
   id           String    @id @default(uuid())
   customerId   String
+  nextCheckDate     DateTime?              // 下次建议复检日期
   customer     Customer  @relation(fields: [customerId], references: [id])
   deviceId     String
   device       Device    @relation(fields: [deviceId], references: [id])
@@ -1098,3 +1100,86 @@ model PhoneVerifyCode {
 
   @@index([phone, createdAt])
 }
+
+// ============================================
+// 体脂秤/体成分记录（小米 XMTZC01YM 等 BLE 体脂秤）
+// ============================================
+model BodyComposition {
+  id              String   @id @default(uuid())
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  // === 基本测量（BLE 标准 0x181D/0x181B 直接拿到）===
+  weightKg        Float                     // 体重（kg）
+  bmi             Float?                    // BMI = weight / height^2
+
+  // === 体成分（BIA 八电极真测）===
+  bodyFatPercent  Float?                    // 体脂率 %
+  bodyFatKg       Float?                    // 体脂量 kg
+  muscleMassKg    Float?                    // 肌肉量 kg
+  musclePercent   Float?                    // 肌肉率 %
+  bodyWaterKg     Float?                    // 身体水分 kg
+  bodyWaterPercent Float?                   // 水分率 %
+  visceralFat     Float?                    // 内脏脂肪等级
+  boneMassKg      Float?                    // 骨量 kg
+  proteinKg       Float?                    // 蛋白质 kg
+
+  // === 代谢 ===
+  bmrKcal         Float?                    // 基础代谢 kcal
+  recommendedIntakeKcal Float?              // 建议热量摄入 kcal
+  metabolicAge    Int?                      // 身体年龄
+  bodyScore       Int?                      // 体成分评分
+  bmiType         String?                   // 偏瘦/正常/超重/肥胖
+
+  // === 比例指标 ===
+  proteinPercent  Float?                    // 蛋白质率 %
+  inorganicSaltKg Float?                    // 无机盐 kg
+  inorganicSaltPercent Float?               // 无机盐 %
+
+  // === 8 段人体成分 ===
+  headKg          Float?
+  trunkKg         Float?
+  leftArmKg       Float?
+  rightArmKg      Float?
+  leftLegKg       Float?
+  rightLegKg      Float?
+
+  // === 8 段脂肪 ===
+  headFatKg       Float?
+  trunkFatKg      Float?
+  leftArmFatKg    Float?
+  rightArmFatKg   Float?
+  leftLegFatKg    Float?
+  rightLegFatKg   Float?
+
+  // === 8 段肌肉 ===
+  headMuscleKg    Float?
+  trunkMuscleKg   Float?
+  leftArmMuscleKg Float?
+  rightArmMuscleKg Float?
+  leftLegMuscleKg Float?
+  rightLegMuscleKg Float?
+
+  // === 控制建议 (kg) ===
+  weightControlKg Float?
+  muscleControlKg Float?
+  fatControlKg    Float?
+
+  // === 来源 ===
+  source          String   @default("BLE_SCALE") // BLE_SCALE / MANUAL / IMPORTED / CLOUD_SYNC
+  deviceModel     String?                   // 如 "Xiaomi XMTZC01YM"
+  deviceMac       String?                   // 蓝牙 MAC
+  rawPayload      String?                   // JSON 原始数据（调试/审计）
+  measuredAt      DateTime @default(now())
+
+  createdAt       DateTime  @default(now())
+
+  @@index([customerId, measuredAt])
+  @@index([measuredAt])
+}
+
+
+
+
+
+

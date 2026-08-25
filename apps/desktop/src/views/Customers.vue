@@ -33,6 +33,18 @@
           </template>
         </el-table-column>
         <el-table-column prop="age" label="年龄" width="70" />
+        <el-table-column label="身高cm" width="80">
+          <template #default="{ row }">{{ row.heightCm || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="体重kg" width="80">
+          <template #default="{ row }">{{ row.weightKg || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="BMI" width="80">
+          <template #default="{ row }">
+            <el-tag v-if="bmiOf(row)" size="small" :type="bmiType(row)">{{ bmiOf(row) }}</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="会员等级" width="100">
           <template #default="{ row }">
             <el-tag size="small" :type="levelType(row.level)">{{ levelLabel(row.level) }}</el-tag>
@@ -85,6 +97,19 @@
           <el-col :span="12"><el-form-item label="身高(cm)"><el-input-number v-model="form.heightCm" :min="0" :max="250" style="width:100%" /></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="体重(kg)"><el-input-number v-model="form.weightKg" :min="0" :max="300" :step="0.1" style="width:100%" /></el-form-item></el-col>
         </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="BMI">
+              <el-input :model-value="bmiOf(form)" disabled />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="BMI 分级">
+              <el-tag v-if="bmiOf(form)" :type="bmiType(form)">{{ bmiLabel(form) }}</el-tag>
+              <span v-else class="text-secondary text-sm">填写身高体重后自动计算</span>
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-form-item label="备注"><el-input v-model="form.remark" type="textarea" :rows="2" /></el-form-item>
       </el-form>
       <template #footer>
@@ -135,7 +160,7 @@ const filters = reactive({ keyword: '', level: '', page: 1, pageSize: 20 });
 const form = reactive({
   id: '',
   name: '', phone: '', gender: 1, birthday: '',
-  heightCm: 170, weightKg: 60, remark: '',
+  heightCm: undefined as any, weightKg: undefined as any, remark: '',
 });
 
 async function loadList() {
@@ -149,7 +174,7 @@ async function loadList() {
 }
 
 function resetForm() {
-  Object.assign(form, { id: '', name: '', phone: '', gender: 1, birthday: '', heightCm: 170, weightKg: 60, remark: '' });
+  Object.assign(form, { id: '', name: '', phone: '', gender: 1, birthday: '', heightCm: undefined, weightKg: undefined, remark: '' });
 }
 
 function editCustomer(row: any) {
@@ -196,6 +221,27 @@ async function viewHistory(row: any) {
   historyDrawer.value = true;
 }
 
+function bmiOf(r: any) {
+  const h = Number(r?.heightCm), w = Number(r?.weightKg);
+  if (!h || !w) return '';
+  return (w / Math.pow(h / 100, 2)).toFixed(1);
+}
+function bmiType(r: any) {
+  const b = Number(bmiOf(r));
+  if (!b) return '';
+  if (b < 18.5) return 'info';
+  if (b < 24) return 'success';
+  if (b < 28) return 'warning';
+  return 'danger';
+}
+function bmiLabel(r: any) {
+  const b = Number(bmiOf(r));
+  if (!b) return '';
+  if (b < 18.5) return '偏瘦';
+  if (b < 24) return '正常';
+  if (b < 28) return '超重';
+  return '肥胖';
+}
 function levelLabel(l: string) { return ({ BLACK: '黑金', DIAMOND: '钻石', GOLD: '黄金', SILVER: '白银', BRONZE: '青铜' } as any)[l] || '青铜'; }
 function levelType(l: string) { return ({ BLACK: 'danger', DIAMOND: 'warning', GOLD: 'warning', SILVER: 'info', BRONZE: '' } as any)[l] || ''; }
 function sourceLabel(s: string) { return ({ OFFLINE: '到店', WECHAT: '公众号', REFERRAL: '转介绍', ACTIVITY: '活动' } as any)[s] || s; }

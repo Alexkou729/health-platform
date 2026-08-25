@@ -53,6 +53,24 @@
         </el-form>
       </div>
 
+      <div class="glass-card setting-section detection-types-section">
+        <h3><el-icon><CollectionTag /></el-icon> 检测种类设置（按性别 / 年龄区分）</h3>
+        <p class="section-tip">系统根据客户性别、年龄自动匹配检测项目：男性不生成乳腺/妇科等项目，女性不生成前列腺等项目。此列表只读，反映当前检测引擎的匹配规则。</p>
+        <el-tabs v-model="detectTypeTab">
+          <el-tab-pane v-for="g in detectTypeGroups" :key="g.name" :label="g.name + ' (' + g.count + ')'" :name="g.name">
+            <div class="type-list">
+              <div v-for="t in g.items" :key="t.code" class="type-item">
+                <span class="type-name">{{ t.name }}</span>
+                <span class="type-tags">
+                  <el-tag v-for="a in t.applicable" :key="a" size="small" :type="tagType(a)" effect="plain">{{ tagLabel(a) }}</el-tag>
+                </span>
+                <span class="type-count">{{ t.indicatorsCount }} 项指标</span>
+              </div>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
+      </div>
+
       <div class="glass-card setting-section"><h3>应用信息</h3>
         <el-descriptions :column="1" border>
           <el-descriptions-item label="版本">v1.0.0</el-descriptions-item>
@@ -79,7 +97,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Delete, Download, Connection, SwitchButton, MagicStick, Check } from '@element-plus/icons-vue';
+import { Delete, Download, Connection, SwitchButton, MagicStick, Check, List, CollectionTag } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import { franchiseApi } from '@/api';
 
@@ -168,6 +186,7 @@ async function testConnection() { ElMessage.info('测试中...'); try { const re
 function logout() { ElMessageBox.confirm('确定退出登录？', '提示', { type: 'warning' }).then(() => { authStore.logout(); router.push('/login'); }).catch(() => {}); }
 
 onMounted(async () => {
+  loadDetectionTypes();
   if (window.electronAPI) appInfo.value = await window.electronAPI.getAppInfo();
   if (authStore.user?.role === 'SUPER_ADMIN') await loadAiConfig();
 });
@@ -180,10 +199,16 @@ onMounted(async () => {
 .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .setting-section { padding: 24px; }
 .setting-section h3 { margin: 0 0 16px; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+.detection-types-section { grid-column: 1 / -1; }
 .ai-section { grid-column: 1 / -1; background: linear-gradient(135deg, rgba(64, 158, 255, 0.06), rgba(103, 194, 58, 0.06)); }
 .section-tip { margin: -8px 0 16px; color: #909399; font-size: 12px; line-height: 1.6; }
 .ai-actions { display: flex; gap: 8px; margin-top: 4px; }
 .ai-status { margin-top: 12px; }
 .action-grid { display: flex; flex-direction: column; gap: 8px; }
 .action-grid .el-button { width: 100%; justify-content: flex-start; }
+.type-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; max-height: 420px; overflow-y: auto; }
+.type-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 8px; }
+.type-name { flex: 1; font-size: 13px; font-weight: 500; }
+.type-tags { display: flex; gap: 4px; }
+.type-count { font-size: 11px; color: #909399; flex-shrink: 0; }
 </style>

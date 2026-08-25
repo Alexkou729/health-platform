@@ -23,6 +23,14 @@ export class AIController {
     return this.aiService.interpretReport(reportId, { provider: body?.provider });
   }
 
+  @Post('interpret/:reportId/structured')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'AI 结构化解读报告（返回 JSON，供报告生成器消费）' })
+  async interpretStructured(@Req() req: Request, @Param('reportId') reportId: string, @Body() body: any) {
+    this.assertHeadOffice(req);
+    return this.aiService.interpretReportStructured(reportId, { provider: body?.provider });
+  }
+
   @Post('interpret-batch')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '批量解读报告' })

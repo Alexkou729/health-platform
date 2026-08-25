@@ -15,63 +15,93 @@ datasource db {
 // ============================================
 
 model Store {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  name        String
-  address     String?
-  phone       String?
-  manager     String?
-  openHours   String?
-  logoUrl     String?
-  status      String   @default("ACTIVE") // ACTIVE / INACTIVE
-  remark      String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String    @id @default(uuid())
+  code              String    @unique
+  name              String
+  address           String?
+  phone             String?
+  manager           String?
+  openHours         String?
+  logoUrl           String?
+  status            String    @default("ACTIVE") // ACTIVE / INACTIVE / FROZEN
+  // === 加盟 SaaS 字段 ===
+  level             String    @default("BASIC") // BASIC / PRO / FLAGSHIP
+  parentId          String?
+  parent            Store?    @relation("StoreTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children          Store[]   @relation("StoreTree")
+  contactName       String?
+  contactPhone      String?
+  contactEmail      String?
+  businessLicense   String? // 营业执照号/统一社会信用代码
+  businessLicenseUrl String? // 营业执照照片 URL
+  city              String?
+  province          String?
+  subscriptionPlan  String?   @default("FREE")
+  subscriptionStart DateTime?
+  subscriptionEnd   DateTime?
+  monthlyFee        Float     @default(299)
+  isHeadOffice      Boolean   @default(false)
+  remark            String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  customers   Customer[]
-  staff       Staff[]
-  devices     Device[]
-  packages    Package[]
-  orders      Order[]
-  detections  Detection[]
-  coupons     Coupon[]
-  carePlans   CarePlan[]
-  appointments Appointment[]
-  tasks       Task[]
-  performances StaffPerformance[]
+  subscriptions           Subscription[]
+  aiUsages                AIUsage[]
+  serviceRequests         ServiceRequest[]
+  invoices                Invoice[]
+  interpretationsReceived AIInterpretation[]
+  consultationsReceived   Consultation[]
+
+  customers     Customer[]
+  staff         Staff[]
+  devices       Device[]
+  packages      Package[]
+  orders        Order[]
+  detections      Detection[]
+  coupons       Coupon[]
+  carePlans     CarePlan[]
+  appointments  Appointment[]
+  tasks         Task[]
+  performances  StaffPerformance[]
   operationLogs OperationLog[]
+  products           Product[]
+  mallOrders         MallOrder[]
+  homeServiceOrders  HomeServiceOrder[]
+  storeSettlement    StoreSettlement?
 
   @@index([code])
   @@index([status])
 }
 
 model Staff {
-  id              String   @id @default(uuid())
-  username        String   @unique
-  password        String   // bcrypt 哈希
-  name            String
-  phone           String?
-  email           String?
-  avatarUrl       String?
-  role            String   @default("RECEPTIONIST") // SUPER_ADMIN / STORE_ADMIN / DOCTOR / CONSULTANT / RECEPTIONIST
-  storeId         String?
-  store           Store?   @relation(fields: [storeId], references: [id])
-  commissionRate  Float    @default(0.05)
-  status          String   @default("ACTIVE")
-  lastLoginAt     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String    @id @default(uuid())
+  username       String    @unique
+  password       String // bcrypt 哈希
+  name           String
+  phone          String?
+  email          String?
+    avatarUrl      String?
+    role           String    @default("RECEPTIONIST") // SUPER_ADMIN / STORE_ADMIN / DOCTOR / CONSULTANT / RECEPTIONIST
+    permissions    String    @default("[]") // 功能权限白名单 JSON 数组，空数组=按角色默认
+    storeId        String?
+  store          Store?    @relation(fields: [storeId], references: [id])
+  commissionRate Float     @default(0.05)
+  status         String    @default("ACTIVE")
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  customers       Customer[]    @relation("ConsultantCustomers")
-  detections      Detection[]
-  orders          Order[]
-  loginLogs       LoginLog[]
-  carePlans       CarePlan[]
-  appointments    Appointment[]
-  assignedTasks   Task[]       @relation("TaskAssigner")
-  todoTasks       Task[]       @relation("TaskAssignee")
-  performances    StaffPerformance[]
-  operationLogs   OperationLog[]
+  customers             Customer[]         @relation("ConsultantCustomers")
+  detections            Detection[]
+  orders                Order[]
+  loginLogs             LoginLog[]
+  carePlans             CarePlan[]
+  appointments          Appointment[]
+  assignedTasks         Task[]             @relation("TaskAssigner")
+  todoTasks             Task[]             @relation("TaskAssignee")
+  performances          StaffPerformance[]
+  operationLogs         OperationLog[]
+  consultationsAsDoctor Consultation[]     @relation("ConsultationDoctor")
 
   @@index([username])
   @@index([storeId])
@@ -95,41 +125,47 @@ model LoginLog {
 // ============================================
 
 model Customer {
-  id                String   @id @default(uuid())
-  openid            String?  @unique
-  unionid           String?  
-  name              String
-  phone             String   @unique
-  gender            Int      @default(0) // 0=未知 1=男 2=女
-  birthday          DateTime?
-  age               Int?
-  heightCm          Int?
-  weightKg          Float?
-  wechatNickname    String?
-  avatarUrl         String?
-  storeId           String
-  store             Store    @relation(fields: [storeId], references: [id])
-  consultantId      String?
-  consultant        Staff?   @relation("ConsultantCustomers", fields: [consultantId], references: [id])
-  level             String   @default("BRONZE") // BRONZE/SILVER/GOLD/DIAMOND/BLACK
-  tags              String   @default("[]") // JSON 数组 CustomerTag[]
-  totalSpent        Float    @default(0)
-  totalDetections   Int      @default(0)
-  lastDetectionAt   DateTime?
-  remark            String?
-  source            String   @default("OFFLINE") // OFFLINE/WECHAT/REFERRAL/ACTIVITY
-  status            String   @default("ACTIVE") // ACTIVE/INACTIVE/BLACKLIST
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id              String    @id @default(uuid())
+  openid          String?   @unique
+  unionid         String?
+  name            String
+  phone           String    @unique
+  gender          Int       @default(0) // 0=未知 1=男 2=女
+  birthday        DateTime?
+  age             Int?
+  heightCm        Int?
+  weightKg        Float?
+  wechatNickname  String?
+  avatarUrl       String?
+  storeId         String
+  store           Store     @relation(fields: [storeId], references: [id])
+  consultantId    String?
+  consultant      Staff?    @relation("ConsultantCustomers", fields: [consultantId], references: [id])
+  level           String    @default("BRONZE") // BRONZE/SILVER/GOLD/DIAMOND/BLACK
+  tags            String    @default("[]") // String 数组 CustomerTag[]
+  totalSpent      Float     @default(0)
+  totalDetections Int       @default(0)
+  lastDetectionAt DateTime?
+  remark          String?
+  source          String    @default("OFFLINE") // OFFLINE/WECHAT/REFERRAL/ACTIVITY
+  status          String    @default("ACTIVE") // ACTIVE/INACTIVE/BLACKLIST
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  detections        Detection[]
-  orders            Order[]
-  coupons           CustomerCoupon[]
-  measurements      Measurement[]
-  carePlans         CarePlan[]
-  appointments      Appointment[]
-  tasks             Task[]
-  wxMiniAppUser     WxMiniAppUser?
+  detections            Detection[]
+  bodyCompositions      BodyComposition[]
+  orders                Order[]
+  coupons               CustomerCoupon[]
+  measurements          Measurement[]
+  carePlans             CarePlan[]
+  appointments          Appointment[]
+  tasks                 Task[]
+  aiInterpretations     AIInterpretation[]
+  consultationsReceived Consultation[]
+  wxMiniAppUser         WxMiniAppUser?
+  serviceRequests       ServiceRequest[]
+  mallOrders            MallOrder[]
+  homeServiceOrders     HomeServiceOrder[]
 
   @@index([phone])
   @@index([storeId])
@@ -144,28 +180,28 @@ model Customer {
 // ============================================
 
 model Device {
-  id                String   @id @default(uuid())
-  deviceNo          String   @unique
-  vendor            String   @default("Quantum")
-  model             String   @default("QA-13")
-  hidVendorId       Int?
-  hidProductId      Int?
-  status            Int      @default(0) // DeviceStatus enum
-  lastHeartbeatAt   DateTime?
-  storeId           String
-  store             Store    @relation(fields: [storeId], references: [id])
-  boundAt           DateTime @default(now())
-  expiresAt         DateTime
-  totalDetections   Int      @default(0)
-  firmwareVersion   String   @default("1.0.0")
-  temperature       Float?
-  secret            String   // 设备密钥
-  remark            String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id              String    @id @default(uuid())
+  deviceNo        String    @unique
+  vendor          String    @default("Quantum")
+  model           String    @default("QA-13")
+  hidVendorId     Int?
+  hidProductId    Int?
+  status          Int       @default(0) // DeviceStatus enum
+  lastHeartbeatAt DateTime?
+  storeId         String
+  store           Store     @relation(fields: [storeId], references: [id])
+  boundAt         DateTime  @default(now())
+  expiresAt       DateTime
+  totalDetections Int       @default(0)
+  firmwareVersion String    @default("1.0.0")
+  temperature     Float?
+  secret          String // 设备密钥
+  remark          String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  detections        Detection[]
-  heartbeats        DeviceHeartbeat[]
+  detections Detection[]
+  heartbeats DeviceHeartbeat[]
 
   @@index([deviceNo])
   @@index([storeId])
@@ -190,29 +226,31 @@ model DeviceHeartbeat {
 // ============================================
 
 model Detection {
-  id                String   @id @default(uuid())
-  customerId        String
-  customer          Customer @relation(fields: [customerId], references: [id])
-  deviceId          String
-  device            Device   @relation(fields: [deviceId], references: [id])
-  staffId           String?
-  staff             Staff?   @relation(fields: [staffId], references: [id])
-  storeId           String
-  store             Store    @relation(fields: [storeId], references: [id])
-  startedAt         DateTime @default(now())
-  finishedAt        DateTime?
-  durationSec       Int      @default(60)
-  status            Int      @default(0) // PENDING/RUNNING/COMPLETED/FAILED/CANCELED
-  rawPayload        Json?    // 60 秒生物电原始数据
-  overallScore      Float?
-  constitution      String?  // 中医体质
-  remark            String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id           String    @id @default(uuid())
+  customerId   String
+  nextCheckDate     DateTime?              // 下次建议复检日期
+  customer     Customer  @relation(fields: [customerId], references: [id])
+  deviceId     String
+  device       Device    @relation(fields: [deviceId], references: [id])
+  staffId      String?
+  staff        Staff?    @relation(fields: [staffId], references: [id])
+  storeId      String
+  store        Store     @relation(fields: [storeId], references: [id])
+  startedAt    DateTime  @default(now())
+  finishedAt   DateTime?
+  durationSec  Int       @default(60)
+  status       Int       @default(0) // PENDING/RUNNING/COMPLETED/FAILED/CANCELED
+  progress     Int       @default(0) // 检测进度 0-100
+  rawPayload   String? // 60 秒生物电原始数据
+  overallScore Float?
+  constitution String? // 中医体质
+  remark       String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  reports           Report[]
-  measurement       Measurement?
-  carePlans         CarePlan[]
+  reports     Report[]
+  measurement Measurement?
+  carePlans   CarePlan[]
 
   @@index([customerId, createdAt])
   @@index([deviceId])
@@ -221,11 +259,11 @@ model Detection {
 }
 
 model Measurement {
-  id              String     @id @default(uuid())
+  id              String    @id @default(uuid())
   customerId      String
-  customer        Customer   @relation(fields: [customerId], references: [id])
-  detectionId     String     @unique
-  detection       Detection  @relation(fields: [detectionId], references: [id])
+  customer        Customer  @relation(fields: [customerId], references: [id])
+  detectionId     String    @unique
+  detection       Detection @relation(fields: [detectionId], references: [id])
   heightCm        Int?
   weightKg        Float?
   bmi             Float?
@@ -237,31 +275,35 @@ model Measurement {
   proteinRate     Float?
   inorganicSalt   Float?
   score           Float?
-  createdAt       DateTime   @default(now())
+  createdAt       DateTime  @default(now())
 }
 
 model Report {
-  id                String     @id @default(uuid())
-  detectionId       String
-  detection         Detection  @relation(fields: [detectionId], references: [id])
-  customerId        String
-  templateCode      String     // ReportTemplate enum
-  templateVersion   Int        @default(1)
-  title             String
-  indicators        Json       // Indicator[] JSON
-  score             Float      @default(0)
-  conclusion        String     @default("")
-  suggestions       Json       // string[]
-  warnings          Json       // string[]
-  highlights        Json       // string[]
-  pdfUrl            String?
-  htmlUrl           String?
-  thumbnailUrl      String?
-  status            Int        @default(1) // GENERATING/READY/DELIVERED/VIEWED
-  deliveredAt       DateTime?
-  viewedAt          DateTime?
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+  id                     String             @id @default(uuid())
+  detectionId            String
+  detection              Detection          @relation(fields: [detectionId], references: [id])
+  customerId             String
+  templateCode           String // ReportTemplate enum
+  templateVersion        Int                @default(1)
+  title                  String
+  isDemo                 Boolean            @default(false) // 演示数据角标
+  indicators             String // Indicator[] String
+  score                  Float              @default(0)
+  conclusion             String             @default("")
+  suggestions            String // string[]
+  warnings               String
+  highlights             String
+  aiInterpretations      AIInterpretation[]
+  consultationsConsulted Consultation[]
+    pdfUrl                 String?
+    htmlUrl                String?
+    thumbnailUrl           String?
+    shareToken             String?   @unique // 客户免登录查看报告的分享令牌
+    status                 Int                @default(1) // GENERATING/READY/DELIVERED/VIEWED
+  deliveredAt            DateTime?
+  viewedAt               DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
 
   @@index([detectionId])
   @@index([customerId, createdAt])
@@ -285,9 +327,9 @@ model Package {
   originalPrice       Float
   cost                Float    @default(0)
   validityDays        Int      @default(365)
-  applicableTemplates Json     // ReportTemplate[]
-  giftServices        Json     // string[]
-  tags                Json     // string[]
+  applicableTemplates String // ReportTemplate[]
+  giftServices        String // string[]
+  tags                String // string[]
   storeId             String
   store               Store    @relation(fields: [storeId], references: [id])
   status              String   @default("ACTIVE")
@@ -296,7 +338,7 @@ model Package {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  orderItems          OrderItem[]
+  orderItems OrderItem[]
 
   @@index([code])
   @@index([storeId])
@@ -304,29 +346,29 @@ model Package {
 }
 
 model Order {
-  id              String     @id @default(uuid())
-  orderNo         String     @unique
-  customerId      String
-  customer        Customer   @relation(fields: [customerId], references: [id])
-  staffId         String?
-  staff           Staff?     @relation(fields: [staffId], references: [id])
-  storeId         String
-  store           Store      @relation(fields: [storeId], references: [id])
-  totalAmount     Float
-  paidAmount      Float      @default(0)
-  discountAmount  Float      @default(0)
-  couponId        String?
-  remark          String?
-  paymentMethod   String?    // WECHAT/CASH/CARD/ALIPAY
-  paymentTradeNo  String?
-  status          Int        @default(0) // UNPAID/PAID/REFUNDED/CANCELED/COMPLETED
-  paidAt          DateTime?
-  refundedAt      DateTime?
-  completedAt     DateTime?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  id             String    @id @default(uuid())
+  orderNo        String    @unique
+  customerId     String
+  customer       Customer  @relation(fields: [customerId], references: [id])
+  staffId        String?
+  staff          Staff?    @relation(fields: [staffId], references: [id])
+  storeId        String
+  store          Store     @relation(fields: [storeId], references: [id])
+  totalAmount    Float
+  paidAmount     Float     @default(0)
+  discountAmount Float     @default(0)
+  couponId       String?
+  remark         String?
+  paymentMethod  String? // WECHAT/CASH/CARD/ALIPAY
+  paymentTradeNo String?
+  status         Int       @default(0) // UNPAID/PAID/REFUNDED/CANCELED/COMPLETED
+  paidAt         DateTime?
+  refundedAt     DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  items           OrderItem[]
+  items OrderItem[]
 
   @@index([orderNo])
   @@index([customerId, createdAt])
@@ -335,38 +377,38 @@ model Order {
 }
 
 model OrderItem {
-  id            String   @id @default(uuid())
-  orderId       String
-  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  packageId     String
-  package       Package  @relation(fields: [packageId], references: [id])
-  name          String
-  price         Float
-  quantity      Int      @default(1)
-  subtotal      Float
-  createdAt     DateTime @default(now())
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  packageId String
+  package   Package  @relation(fields: [packageId], references: [id])
+  name      String
+  price     Float
+  quantity  Int      @default(1)
+  subtotal  Float
+  createdAt DateTime @default(now())
 
   @@index([orderId])
 }
 
 model Coupon {
-  id              String   @id @default(uuid())
-  code            String   @unique
-  name            String
-  type            String   @default("AMOUNT") // AMOUNT/PERCENTAGE/GIFT
-  value           Float
-  minSpend        Float    @default(0)
-  validFrom       DateTime
-  validTo         DateTime
-  totalQuantity   Int
-  usedQuantity    Int      @default(0)
-  perCustomerLimit Int     @default(1)
-  description     String?
-  storeId         String?
-  store           Store?   @relation(fields: [storeId], references: [id])
-  status          String   @default("ACTIVE")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String   @id @default(uuid())
+  code             String   @unique
+  name             String
+  type             String   @default("AMOUNT") // AMOUNT/PERCENTAGE/GIFT
+  value            Float
+  minSpend         Float    @default(0)
+  validFrom        DateTime
+  validTo          DateTime
+  totalQuantity    Int
+  usedQuantity     Int      @default(0)
+  perCustomerLimit Int      @default(1)
+  description      String?
+  storeId          String?
+  store            Store?   @relation(fields: [storeId], references: [id])
+  status           String   @default("ACTIVE")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   customerCoupons CustomerCoupon[]
 
@@ -375,17 +417,17 @@ model Coupon {
 }
 
 model CustomerCoupon {
-  id          String   @id @default(uuid())
-  customerId  String
-  customer    Customer @relation(fields: [customerId], references: [id])
-  couponId    String
-  coupon      Coupon   @relation(fields: [couponId], references: [id])
-  code        String   @unique
-  status      String   @default("UNUSED") // UNUSED/USED/EXPIRED
-  usedAt      DateTime?
-  orderId     String?
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
+  id         String    @id @default(uuid())
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id])
+  couponId   String
+  coupon     Coupon    @relation(fields: [couponId], references: [id])
+  code       String    @unique
+  status     String    @default("UNUSED") // UNUSED/USED/EXPIRED
+  usedAt     DateTime?
+  orderId    String?
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
 
   @@index([customerId, status])
 }
@@ -395,29 +437,29 @@ model CustomerCoupon {
 // ============================================
 
 model WxMessage {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   openid      String
   templateId  String
-  content     Json
+  content     String
   url         String?
-  miniprogram Json?
-  status      Int      @default(0) // 0=待发送 1=已发送 2=失败
+  miniprogram String?
+  status      Int       @default(0) // 0=待发送 1=已发送 2=失败
   errorMsg    String?
   msgId       String?
   sentAt      DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([openid, createdAt])
   @@index([status])
 }
 
 model WxSubscribe {
-  id          String   @id @default(uuid())
-  openid      String   @unique
-  unionid     String?
-  scene       String?  // 订阅场景: detection/remind/promotion
-  subscribedAt DateTime @default(now())
-  expiresAt   DateTime?
+  id           String    @id @default(uuid())
+  openid       String    @unique
+  unionid      String?
+  scene        String? // 订阅场景: detection/remind/promotion
+  subscribedAt DateTime  @default(now())
+  expiresAt    DateTime?
 
   @@index([openid])
 }
@@ -429,7 +471,7 @@ model WxSubscribe {
 model SystemConfig {
   id        String   @id @default(uuid())
   key       String   @unique
-  value     Json
+  value     String
   remark    String?
   updatedAt DateTime @updatedAt
   updatedBy String?
@@ -442,7 +484,7 @@ model AuditLog {
   module    String
   action    String
   targetId  String?
-  payload   Json?
+  payload   String?
   ip        String?
   createdAt DateTime @default(now())
 
@@ -451,16 +493,16 @@ model AuditLog {
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  type      String   // DETECTION_COMPLETED/REMIND/ORDER/COUPON/SYSTEM
-  title     String
-  content   String
-  targetType String  // ALL/STAFF/CUSTOMER/ROLE
-  targetIds Json?    // [id1, id2, ...]
-  status    String   @default("PENDING") // PENDING/SENT/READ/FAILED
-  sentAt    DateTime?
-  readAt    DateTime?
-  createdAt DateTime @default(now())
+  id         String    @id @default(uuid())
+  type       String // DETECTION_COMPLETED/REMIND/ORDER/COUPON/SYSTEM
+  title      String
+  content    String
+  targetType String // ALL/STAFF/CUSTOMER/ROLE
+  targetIds  String? // [id1, id2, ...]
+  status     String    @default("PENDING") // PENDING/SENT/READ/FAILED
+  sentAt     DateTime?
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
 
   @@index([status, createdAt])
   @@index([targetType])
@@ -471,54 +513,54 @@ model Notification {
 // ============================================
 
 model RecipeItem {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  name        String
-  category    String
-  description String?
-  durationMin Int      @default(30)
-  price       Float    @default(0)
-  cost        Float    @default(0)
-  indications String   @default("[]")
-  contraindications String @default("[]")
-  coverUrl    String?
-  tags        String   @default("[]")
-  status      String   @default("ACTIVE")
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String   @id @default(uuid())
+  code              String   @unique
+  name              String
+  category          String
+  description       String?
+  durationMin       Int      @default(30)
+  price             Float    @default(0)
+  cost              Float    @default(0)
+  indications       String   @default("[]")
+  contraindications String   @default("[]")
+  coverUrl          String?
+  tags              String   @default("[]")
+  status            String   @default("ACTIVE")
+  sortOrder         Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  planItems   PlanItem[]
+  planItems PlanItem[]
 
   @@index([category])
   @@index([status])
 }
 
 model CarePlan {
-  id          String   @id @default(uuid())
-  customerId  String
-  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  detectionId String?
-  detection   Detection? @relation(fields: [detectionId], references: [id])
-  storeId     String
-  store       Store    @relation(fields: [storeId], references: [id])
-  staffId     String?
-  staff       Staff?   @relation(fields: [staffId], references: [id])
-  title       String
+  id           String     @id @default(uuid())
+  customerId   String
+  customer     Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  detectionId  String?
+  detection    Detection? @relation(fields: [detectionId], references: [id])
+  storeId      String
+  store        Store      @relation(fields: [storeId], references: [id])
+  staffId      String?
+  staff        Staff?     @relation(fields: [staffId], references: [id])
+  title        String
   constitution String?
-  summary     String?
-  diagnosis   String?
-  advice      String?
-  startDate   DateTime @default(now())
-  endDate     DateTime?
-  totalPrice  Float    @default(0)
-  status      String   @default("DRAFT")
-  remark      String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  summary      String?
+  diagnosis    String?
+  advice       String?
+  startDate    DateTime   @default(now())
+  endDate      DateTime?
+  totalPrice   Float      @default(0)
+  status       String     @default("DRAFT")
+  remark       String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
-  items       PlanItem[]
-  tasks       Task[]
+  items        PlanItem[]
+  tasks        Task[]
   appointments Appointment[]
 
   @@index([customerId, createdAt])
@@ -527,35 +569,35 @@ model CarePlan {
 }
 
 model PlanItem {
-  id          String   @id @default(uuid())
-  planId      String
-  plan        CarePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  recipeId    String
-  recipe      RecipeItem @relation(fields: [recipeId], references: [id])
-  name        String
-  frequency   String   @default("1次/周")
-  duration    Int      @default(30)
-  price       Float
-  quantity    Int      @default(1)
-  sortOrder   Int      @default(0)
-  remark      String?
-  createdAt   DateTime @default(now())
+  id        String     @id @default(uuid())
+  planId    String
+  plan      CarePlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  recipeId  String
+  recipe    RecipeItem @relation(fields: [recipeId], references: [id])
+  name      String
+  frequency String     @default("1次/周")
+  duration  Int        @default(30)
+  price     Float
+  quantity  Int        @default(1)
+  sortOrder Int        @default(0)
+  remark    String?
+  createdAt DateTime   @default(now())
 
   @@index([planId])
   @@index([recipeId])
 }
 
 model AdviceTemplate {
-  id          String   @id @default(uuid())
-  code        String   @unique
+  id           String   @id @default(uuid())
+  code         String   @unique
   constitution String
-  category    String
-  title       String
-  content     String
-  priority    Int      @default(0)
-  status      String   @default("ACTIVE")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  category     String
+  title        String
+  content      String
+  priority     Int      @default(0)
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([constitution, category])
 }
@@ -565,31 +607,31 @@ model AdviceTemplate {
 // ============================================
 
 model Appointment {
-  id          String   @id @default(uuid())
-  customerId  String
-  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  storeId     String
-  store       Store    @relation(fields: [storeId], references: [id])
-  staffId     String?
-  staff       Staff?   @relation(fields: [staffId], references: [id])
-  planId      String?
-  plan        CarePlan? @relation(fields: [planId], references: [id])
-  serviceType String
-  serviceName String
-  scheduledAt DateTime
-  durationMin Int      @default(30)
-  status      String   @default("PENDING")
-  notes       String?
-  staffNotes  String?
-  source      String   @default("OFFLINE")
+  id           String    @id @default(uuid())
+  customerId   String
+  customer     Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  storeId      String
+  store        Store     @relation(fields: [storeId], references: [id])
+  staffId      String?
+  staff        Staff?    @relation(fields: [staffId], references: [id])
+  planId       String?
+  plan         CarePlan? @relation(fields: [planId], references: [id])
+  serviceType  String
+  serviceName  String
+  scheduledAt  DateTime
+  durationMin  Int       @default(30)
+  status       String    @default("PENDING")
+  notes        String?
+  staffNotes   String?
+  source       String    @default("OFFLINE")
   cancelReason String?
-  confirmedAt DateTime?
-  startedAt   DateTime?
-  completedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  confirmedAt  DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  services    AppointmentService[]
+  services AppointmentService[]
 
   @@index([customerId, scheduledAt])
   @@index([storeId, scheduledAt])
@@ -598,15 +640,15 @@ model Appointment {
 }
 
 model AppointmentService {
-  id            String   @id @default(uuid())
+  id            String      @id @default(uuid())
   appointmentId String
   appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   serviceName   String
   price         Float
-  durationMin   Int      @default(30)
+  durationMin   Int         @default(30)
   staffId       String?
   remark        String?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime    @default(now())
 
   @@index([appointmentId])
 }
@@ -616,27 +658,27 @@ model AppointmentService {
 // ============================================
 
 model Task {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   title       String
   type        String
-  priority    String   @default("NORMAL")
+  priority    String    @default("NORMAL")
   customerId  String?
   customer    Customer? @relation(fields: [customerId], references: [id])
   planId      String?
   plan        CarePlan? @relation(fields: [planId], references: [id])
   storeId     String
-  store       Store    @relation(fields: [storeId], references: [id])
+  store       Store     @relation(fields: [storeId], references: [id])
   assignerId  String?
-  assigner    Staff?   @relation("TaskAssigner", fields: [assignerId], references: [id])
+  assigner    Staff?    @relation("TaskAssigner", fields: [assignerId], references: [id])
   assigneeId  String
-  assignee    Staff    @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  assignee    Staff     @relation("TaskAssignee", fields: [assigneeId], references: [id])
   description String?
   dueDate     DateTime?
   completedAt DateTime?
-  status      String   @default("PENDING")
+  status      String    @default("PENDING")
   result      String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([assigneeId, status])
   @@index([storeId, status])
@@ -649,18 +691,18 @@ model Task {
 // ============================================
 
 model ScriptTemplate {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  category    String
-  title       String
-  content     String
-  variables   String   @default("[]")
+  id                     String   @id @default(uuid())
+  code                   String   @unique
+  category               String
+  title                  String
+  content                String
+  variables              String   @default("[]")
   applicableConstitution String?
-  scene       String   @default("ALL")
-  status      String   @default("ACTIVE")
-  usageCount  Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  scene                  String   @default("ALL")
+  status                 String   @default("ACTIVE")
+  usageCount             Int      @default(0)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   @@index([category])
   @@index([status])
@@ -671,20 +713,20 @@ model ScriptTemplate {
 // ============================================
 
 model StaffPerformance {
-  id          String   @id @default(uuid())
-  staffId     String
-  staff       Staff    @relation(fields: [staffId], references: [id])
-  storeId     String
-  store       Store    @relation(fields: [storeId], references: [id])
-  period      String
-  detectionCount Int   @default(0)
-  customerCount Int   @default(0)
-  orderCount  Int      @default(0)
-  revenue     Float    @default(0)
-  commission  Float    @default(0)
-  remark      String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(uuid())
+  staffId        String
+  staff          Staff    @relation(fields: [staffId], references: [id])
+  storeId        String
+  store          Store    @relation(fields: [storeId], references: [id])
+  period         String
+  detectionCount Int      @default(0)
+  customerCount  Int      @default(0)
+  orderCount     Int      @default(0)
+  revenue        Float    @default(0)
+  commission     Float    @default(0)
+  remark         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@unique([staffId, period])
   @@index([storeId, period])
@@ -695,36 +737,36 @@ model StaffPerformance {
 // ============================================
 
 model WxMiniAppUser {
-  id          String   @id @default(uuid())
-  openid      String   @unique
+  id          String    @id @default(uuid())
+  openid      String    @unique
   unionid     String?
-  customerId  String?  @unique
+  customerId  String?   @unique
   customer    Customer? @relation(fields: [customerId], references: [id])
   nickname    String?
   avatarUrl   String?
   phone       String?
   sessionKey  String?
   lastLoginAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model NotificationTemplate {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  channel     String
-  type        String
-  title       String
-  content     String
-  variables   String   @default("[]")
-  status      String   @default("ACTIVE")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  code      String   @unique
+  channel   String
+  type      String
+  title     String
+  content   String
+  variables String   @default("[]")
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([channel, type])
 }
 
-model OperationLog {
+  model OperationLog {
   id          String   @id @default(uuid())
   staffId     String?
   staff       Staff?   @relation(fields: [staffId], references: [id])
@@ -735,12 +777,409 @@ model OperationLog {
   targetType  String?
   targetId    String?
   description String?
-  payload     Json?
+  payload     String?
   ip          String?
   userAgent   String?
   createdAt   DateTime @default(now())
 
   @@index([staffId, createdAt])
   @@index([module, action])
+    @@index([storeId, createdAt])
+  }
+
+  // ============================================
+// AI 解读 + 订阅计费 (SaaS 核心)
+// ============================================
+
+// AI 解读记录
+model AIInterpretation {
+  id         String    @id @default(uuid())
+  reportId   String
+  report     Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id])
+  storeId    String
+  store      Store     @relation(fields: [storeId], references: [id])
+  provider   String // tongyi/openai/deepseek/zhipu
+  type       String // AI / HUMAN
+  status     String    @default("PENDING") // PENDING/PROCESSING/COMPLETED/FAILED
+  content    String?
+  summary    String?
+  advice     String? // JSON {lifestyle, diet, exercise...}
+  warnings   String?
+  durationMs Int?
+  tokensUsed Int?
+  cost       Float     @default(0) // 本次消费
+  reviewedBy String? // 人工审核医生 ID
+  reviewedAt DateTime?
+  rating     Int? // 1-5 星
+  feedback   String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([storeId, createdAt])
+  @@index([customerId])
+  @@index([status])
+}
+
+// 订阅/计费
+model Subscription {
+  id        String   @id @default(uuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id])
+  plan      String // FREE / BASIC / PRO / FLAGSHIP
+  price     Float
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("ACTIVE") // ACTIVE / EXPIRED / CANCELLED
+  aiQuota   Int      @default(0) // AI 解读次数配额
+  aiUsed    Int      @default(0) // 已使用次数
+  paymentId String?
+  remark    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([status, endDate])
+}
+
+// AI 解读消费记录
+model AIUsage {
+  id               String   @id @default(uuid())
+  storeId          String
+  store            Store    @relation(fields: [storeId], references: [id])
+  subscriptionId   String?
+  interpretationId String?
+  customerId       String?
+  type             String // AI / HUMAN
+  provider         String?
+  cost             Float    @default(0)
+  tokensUsed       Int?
+  createdAt        DateTime @default(now())
+
+  @@index([storeId, createdAt])
+  @@index([subscriptionId])
+}
+
+// 人工咨询工单 (专家解读)
+model Consultation {
+  id          String    @id @default(uuid())
+  storeId     String
+  store       Store     @relation(fields: [storeId], references: [id])
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  reportId    String?
+  report      Report?   @relation(fields: [reportId], references: [id])
+  doctorId    String? // 分配给的医师
+  doctor      Staff?    @relation("ConsultationDoctor", fields: [doctorId], references: [id])
+  type        String    @default("NORMAL") // NORMAL/URGENT/VIP
+  price       Float     @default(99)
+  status      String    @default("PENDING") // PENDING/ASSIGNED/IN_PROGRESS/COMPLETED/CANCELLED
+  question    String? // 商家提交的问题
+  answer      String? // 医师回答
+  rating      Int?
+  feedback    String?
+  createdAt   DateTime  @default(now())
+  assignedAt  DateTime?
+  completedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@index([storeId, status])
+  @@index([doctorId])
+  @@index([customerId])
+}
+
+// ============================================
+// 加盟服务工单 (商家 -> 总部)
+// ============================================
+
+  model ServiceRequest {
+  id          String    @id @default(uuid())
+  requestNo   String    @unique
+  storeId     String
+  store       Store     @relation(fields: [storeId], references: [id])
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  type        String // AI_REPORT / CARE_PLAN / CONSULTATION / DEVICE_SALE
+  title       String
+  description String?
+  status      String    @default("PENDING") // PENDING/ACCEPTED/PROCESSING/COMPLETED/REJECTED
+  price       Float     @default(0)
+  quantity    Int       @default(1)
+  totalAmount Float     @default(0)
+  payload     String? // JSON 请求详情
+  result      String? // JSON 处理结果（AI 解读 / 调理方案 / 会诊答复）
+  referenceId String? // 关联 AIInterpretation / CarePlan / Consultation / Invoice
+  handledBy   String? // 总部处理人 Staff id
+  handledAt   DateTime?
+  completedAt DateTime?
+  remark      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([storeId, status])
+  @@index([type])
+    @@index([status, createdAt])
+  }
+
+  // 加盟申请（商家自助提交 -> 总部审批开通）
+  model FranchiseApplication {
+    id           String   @id @default(uuid())
+    storeName    String
+    contactName  String
+    contactPhone String
+    city         String?
+    province     String?
+    remark       String?
+    status       String   @default("PENDING") // PENDING/APPROVED/REJECTED
+    storeId      String?
+    reviewedBy   String?
+    reviewedAt   DateTime?
+    createdAt    DateTime @default(now())
+    updatedAt    DateTime @updatedAt
+
+    @@index([status, createdAt])
+    @@index([contactPhone])
+  }
+
+  // 账单/收据
+  model Invoice {
+  id             String    @id @default(uuid())
+  storeId        String
+  store          Store     @relation(fields: [storeId], references: [id])
+  invoiceNo      String    @unique
+  type           String // SUBSCRIPTION / AI_SERVICE / CONSULTATION / DEVICE_SALE
+  amount         Float
+  paidAmount     Float     @default(0)
+  status         String    @default("PENDING") // PENDING/PAID/REFUNDED/CANCELLED
+  paymentMethod  String? // WECHAT / ALIPAY / BANK
+  paymentTradeNo String?
+  items          String? // JSON
+  paidAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
   @@index([storeId, createdAt])
 }
+
+// ============================================
+// 电子商城（小程序客户端）— 增量扩展
+// ============================================
+
+// 商城商品（保健品/调理包/保健用品等）
+model Product {
+  id            String   @id @default(uuid())
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id])
+  name          String
+  category      String   @default("HEALTH") // HEALTH保健品/CARE调理包/DEVICE保健用品/OTHER
+  price         Float
+  originalPrice Float?
+  stock         Int      @default(0)
+  coverUrl      String?
+  images        String   @default("[]") // JSON 数组
+  description   String?
+  status        String   @default("PENDING") // PENDING审核中/ACTIVE上架/REJECTED驳回/OFF下架
+  auditRemark   String?
+  auditedBy     String?
+  auditedAt     DateTime?
+  commissionRate Float   @default(0) // 门店销售提成比例（0-1，总台设置）
+  salesCount    Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items MallOrderItem[]
+
+  @@index([storeId, status])
+  @@index([category])
+}
+
+// 商城订单
+model MallOrder {
+  id           String   @id @default(uuid())
+  orderNo      String   @unique
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id])
+  storeId      String   // 下单门店
+  store        Store    @relation(fields: [storeId], references: [id])
+  status       String   @default("PENDING") // PENDING待处理/ACCEPTED已接单/SHIPPED已发货/COMPLETED已完成/CANCELLED已取消
+  totalAmount  Float
+  payStatus    String   @default("UNPAID") // UNPAID/PAID
+  contactName  String?
+  contactPhone String?
+  address      String?
+  remark       String?
+  paidAt       DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  items MallOrderItem[]
+
+  @@index([storeId, status])
+  @@index([customerId, createdAt])
+}
+
+model MallOrderItem {
+  id        String    @id @default(uuid())
+  orderId   String
+  order     MallOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product   @relation(fields: [productId], references: [id])
+  name      String
+  price     Float
+  quantity  Int
+  subtotal  Float
+
+  @@index([orderId])
+}
+
+// 上门服务项目（上门理疗/上门检测等）
+model HomeService {
+  id          String   @id @default(uuid())
+  name        String
+  category    String   @default("THERAPY") // THERAPY上门理疗/DETECTION上门检测/OTHER
+  price       Float
+  durationMin Int      @default(60)
+  description String?
+  coverUrl    String?
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orders HomeServiceOrder[]
+
+  @@index([category, status])
+}
+
+// 上门服务订单（总台排单 → 门店接单 → 服务 → 结算）
+model HomeServiceOrder {
+  id           String      @id @default(uuid())
+  orderNo      String      @unique
+  customerId   String
+  customer     Customer    @relation(fields: [customerId], references: [id])
+  storeId      String
+  store        Store       @relation(fields: [storeId], references: [id])
+  serviceId    String
+  service      HomeService @relation(fields: [serviceId], references: [id])
+  serviceName  String
+  scheduledAt  DateTime
+  address      String
+  contactName  String
+  contactPhone String
+  status       String      @default("PENDING") // PENDING待排单/ASSIGNED已派单/ACCEPTED门店已接单/SERVING服务中/COMPLETED已完成/CANCELLED已取消
+  totalAmount  Float
+  payStatus    String      @default("UNPAID")
+  remark       String?
+  completedAt  DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([storeId, status])
+  @@index([customerId, createdAt])
+}
+
+// 门店结算比例配置（总台设置）
+model StoreSettlement {
+  id        String   @id @default(uuid())
+  storeId   String   @unique
+  store     Store    @relation(fields: [storeId], references: [id])
+  ratio     Float    @default(0.8) // 门店结算比例（0-1）
+  remark    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 手机验证码（小程序客户端电话登录）
+model PhoneVerifyCode {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone, createdAt])
+}
+
+// ============================================
+// 体脂秤/体成分记录（小米 XMTZC01YM 等 BLE 体脂秤）
+// ============================================
+model BodyComposition {
+  id              String   @id @default(uuid())
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  // === 基本测量（BLE 标准 0x181D/0x181B 直接拿到）===
+  weightKg        Float                     // 体重（kg）
+  bmi             Float?                    // BMI = weight / height^2
+
+  // === 体成分（BIA 八电极真测）===
+  bodyFatPercent  Float?                    // 体脂率 %
+  bodyFatKg       Float?                    // 体脂量 kg
+  muscleMassKg    Float?                    // 肌肉量 kg
+  musclePercent   Float?                    // 肌肉率 %
+  bodyWaterKg     Float?                    // 身体水分 kg
+  bodyWaterPercent Float?                   // 水分率 %
+  visceralFat     Float?                    // 内脏脂肪等级
+  boneMassKg      Float?                    // 骨量 kg
+  proteinKg       Float?                    // 蛋白质 kg
+
+  // === 代谢 ===
+  bmrKcal         Float?                    // 基础代谢 kcal
+  recommendedIntakeKcal Float?              // 建议热量摄入 kcal
+  metabolicAge    Int?                      // 身体年龄
+  bodyScore       Int?                      // 体成分评分
+  bmiType         String?                   // 偏瘦/正常/超重/肥胖
+
+  // === 比例指标 ===
+  proteinPercent  Float?                    // 蛋白质率 %
+  inorganicSaltKg Float?                    // 无机盐 kg
+  inorganicSaltPercent Float?               // 无机盐 %
+
+  // === 8 段人体成分 ===
+  headKg          Float?
+  trunkKg         Float?
+  leftArmKg       Float?
+  rightArmKg      Float?
+  leftLegKg       Float?
+  rightLegKg      Float?
+
+  // === 8 段脂肪 ===
+  headFatKg       Float?
+  trunkFatKg      Float?
+  leftArmFatKg    Float?
+  rightArmFatKg   Float?
+  leftLegFatKg    Float?
+  rightLegFatKg   Float?
+
+  // === 8 段肌肉 ===
+  headMuscleKg    Float?
+  trunkMuscleKg   Float?
+  leftArmMuscleKg Float?
+  rightArmMuscleKg Float?
+  leftLegMuscleKg Float?
+  rightLegMuscleKg Float?
+
+  // === 控制建议 (kg) ===
+  weightControlKg Float?
+  muscleControlKg Float?
+  fatControlKg    Float?
+
+  // === 来源 ===
+  source          String   @default("BLE_SCALE") // BLE_SCALE / MANUAL / IMPORTED / CLOUD_SYNC
+  deviceModel     String?                   // 如 "Xiaomi XMTZC01YM"
+  deviceMac       String?                   // 蓝牙 MAC
+  rawPayload      String?                   // JSON 原始数据（调试/审计）
+  measuredAt      DateTime @default(now())
+
+  createdAt       DateTime  @default(now())
+
+  @@index([customerId, measuredAt])
+  @@index([measuredAt])
+}
+
+
+
+
+
+

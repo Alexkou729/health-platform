@@ -1,0 +1,83 @@
+{
+  "address": "CC:B5:D1:5D:F6:14",
+  "services": [
+    {
+      "uuid": "00001800-0000-1000-8000-00805f9b34fb",
+      "description": "Generic Access Profile",
+      "characteristics": [
+        {
+          "uuid": "00002a00-0000-1000-8000-00805f9b34fb",
+          "description": "Device Name",
+          "properties": "read",
+          "handle": 2
+        },
+        {
+          "uuid": "00002a01-0000-1000-8000-00805f9b34fb",
+          "description": "Appearance",
+          "properties": "read",
+          "handle": 4
+        },
+        {
+          "uuid": "00002a04-0000-1000-8000-00805f9b34fb",
+          "description": "Peripheral Preferred Connection Parameters",
+          "properties": "read",
+          "handle": 6
+        }
+      ]
+    },
+    {
+      "uuid": "00001801-0000-1000-8000-00805f9b34fb",
+      "description": "Generic Attribute Profile",
+      "characteristics": [
+        {
+          "uuid": "00002a05-0000-1000-8000-00805f9b34fb",
+          "description": "Service Changed",
+          "properties": "indicate",
+          "handle": 9
+        }
+      ]
+    },
+    {
+      "uuid": "0000fe95-0000-1000-8000-00805f9b34fb",
+      "description": "Xiaomi Inc.",
+      "characteristics": [
+        {
+          "uuid": "00000050-0000-1000-8000-00805f9b34fb",
+          "description": "Vendor specific",
+          "properties": "read",
+          "handle": 13
+        },
+        {
+          "uuid": "00000051-0000-1000-8000-00805f9b34fb",
+          "description": "Vendor specific",
+          "properties": "write-without-response,notify",
+          "handle": 16
+        },
+        {
+          "uuid": "00000052-0000-1000-8000-00805f9b34fb",
+          "description": "Vendor specific",
+          "properties": "write-without-response,notify",
+          "handle": 20
+        }
+      ]
+    },
+    {
+      "uuid": "00001880-0000-1000-8000-00805f9b34fb",
+      "description": "Vendor specific",
+      "characteristics": [
+        {
+          "uuid": "00001881-0000-1000-8000-00805f9b34fb",
+          "description": "Vendor specific",
+          "properties": "notify",
+          "handle": 25
+        },
+        {
+          "uuid": "00001882-0000-1000-8000-00805f9b34fb",
+          "description": "Vendor specific",
+          "properties": "write-without-response",
+          "handle": 28
+        }
+      ]
+    }
+  ]
+}

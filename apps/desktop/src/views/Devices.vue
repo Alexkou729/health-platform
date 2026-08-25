@@ -6,6 +6,7 @@
         <p class="text-secondary text-sm">共 {{ total }} 台设备 · 在线 {{ stats.online || 0 }} 台</p>
       </div>
       <div class="header-actions">
+        <el-button type="success" @click="scanDevices" :loading="scanning"><el-icon><Aim /></el-icon>自动识别设备</el-button>
         <el-button @click="loadDevices" :icon="Refresh">刷新</el-button>
         <el-button type="primary" @click="showAddDialog = true"><el-icon><Plus /></el-icon>添加设备</el-button>
       </div>
@@ -54,13 +55,13 @@
     <!-- USB 设备检测提示 -->
     <el-alert v-if="usbDevices.length > 0" type="success" :closable="false" style="margin-bottom: 12px" show-icon>
       <template #title>
-        检测到 {{ usbDevices.length }} 台兼容 USB HID 设备
+        扫描到 {{ usbDevices.length }} 台 USB 设备（含序列号），点击「一键注册到系统」自动入库
       </template>
       <div style="margin-top: 8px">
-        <el-tag v-for="d in usbDevices" :key="d.path" style="margin-right: 8px">
-          VID: 0x{{ d.vendorId.toString(16).toUpperCase() }} / PID: 0x{{ d.productId.toString(16).toUpperCase() }}
+        <el-tag v-for="d in usbDevices" :key="d.path" style="margin-right: 8px; margin-bottom: 4px">
+          {{ d.name }} · 序列号 {{ d.deviceNo }}
         </el-tag>
-        <el-button type="primary" size="small" @click="bindUsbDevices" style="margin-left: 8px">绑定这些设备</el-button>
+        <el-button type="primary" size="small" @click="bindUsbDevices" style="margin-left: 8px">一键注册到系统</el-button>
       </div>
     </el-alert>
 
@@ -155,6 +156,7 @@
 import { ref, reactive, onMounted, onUnmounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus, Refresh, Cpu, CircleCheck, CircleClose, Loading } from '@element-plus/icons-vue';
+import { Aim } from '@element-plus/icons-vue';
 import { deviceApi, storeApi } from '@/api';
 
 const items = ref<any[]>([]);
@@ -165,13 +167,14 @@ const usbDevices = ref<any[]>([]);
 const loading = ref(false);
 const showAddDialog = ref(false);
 const editing = ref(false);
+const scanning = ref(false);
 
 const filters = reactive({ page: 1, pageSize: 20 });
 
 const form = reactive({
   id: '',
   deviceNo: '', vendor: 'Quantum', model: 'QA-13',
-  hidVendorId: 0x1234, hidProductId: 0x5678,
+  hidVendorId: 0x5608, hidProductId: 0x080D,
   storeId: '', expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
 });
 
@@ -199,19 +202,40 @@ async function loadStores() {
   } catch {}
 }
 
-// 通过 IPC 检测真实 USB 设备
-async function detectUsbDevices() {
+// 通过 Electron IPC 扫描 USB 设备（含序列号）
+async function scanDevices() {
+  scanning.value = true;
   try {
-    // 通过 Electron IPC 调用主进程
-    const ipcRenderer = (window as any).electronAPI;
-    // 在渲染进程无法直接调用 ipcRenderer，这里通过主进程的 http 端点
-    // 简化：直接提示用户手动添加
-    usbDevices.value = [];
-  } catch {}
+    const api = (window as any).electronAPI;
+    if (!api?.scanDevices) {
+      ElMessage.warning('当前版本不支持自动扫描，请通过「添加设备」手动录入设备编号');
+      usbDevices.value = [];
+      return;
+    }
+    const list = (await api.scanDevices()) || [];
+    // 过滤掉明显是鼠标/键盘/摄像头等常见外设
+    usbDevices.value = list.filter((d: any) => !/鼠标|键盘|触摸板|Camera|摄像头|指纹|Bluetooth/i.test(d.name));
+    if (usbDevices.value.length === 0) ElMessage.info('未扫描到可注册的 USB 设备，请确认检测仪已插入');
+    else ElMessage.success('扫描到 ' + usbDevices.value.length + ' 台设备');
+  } catch (e: any) {
+    ElMessage.error('扫描失败：' + (e.message || e));
+  } finally {
+    scanning.value = false;
+  }
 }
 
 async function bindUsbDevices() {
-  ElMessage.success('设备绑定流程已启动');
+  if (usbDevices.value.length === 0) return;
+  try {
+    const res: any = await deviceApi.sync(usbDevices.value.map((d: any) => ({
+      deviceNo: d.deviceNo, vendor: 'Quantum', model: 'QA-13', vendorId: d.vendorId, productId: d.productId,
+    })));
+    ElMessage.success('已自动注册 ' + (res?.registered || usbDevices.value.length) + ' 台设备到系统');
+    usbDevices.value = [];
+    loadDevices();
+  } catch (e: any) {
+    ElMessage.error('注册失败：' + (e.message || e));
+  }
 }
 
 function editDevice(row: any) {
@@ -223,12 +247,21 @@ function editDevice(row: any) {
 async function submitDevice() {
   if (!form.deviceNo) { ElMessage.warning('请填写设备编号'); return; }
   try {
-    if (editing.value) await deviceApi.update(form.id, form);
-    else await deviceApi.create(form);
+    const payload = {
+      deviceNo: form.deviceNo,
+      vendor: form.vendor,
+      model: form.model,
+      hidVendorId: form.hidVendorId,
+      hidProductId: form.hidProductId,
+      storeId: form.storeId,
+      expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
+    };
+    if (editing.value) await deviceApi.update(form.id, payload);
+    else await deviceApi.create(payload);
     ElMessage.success('保存成功');
     showAddDialog.value = false;
     editing.value = false;
-    Object.assign(form, { id: '', deviceNo: '', vendor: 'Quantum', model: 'QA-13', hidVendorId: 0x1234, hidProductId: 0x5678, expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) });
+    Object.assign(form, { id: '', deviceNo: '', vendor: 'Quantum', model: 'QA-13', hidVendorId: 0x5608, hidProductId: 0x080D, expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) });
     loadDevices();
   } catch (e: any) {
     ElMessage.error(e.message);
@@ -259,7 +292,6 @@ let timer: any;
 onMounted(() => {
   loadDevices();
   loadStores();
-  detectUsbDevices();
   // 每 10s 刷新一次状态
   timer = setInterval(() => {
     deviceApi.statistics().then(s => stats.value = s).catch(() => {});

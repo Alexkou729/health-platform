@@ -9,7 +9,7 @@
     "build": "vite build && tsc -p electron/tsconfig.json && electron-builder",
     "build:dir": "vite build && tsc -p electron/tsconfig.json && electron-builder --dir",
     "build:win": "vite build && tsc -p electron/tsconfig.json && electron-builder --win nsis --x64",
-    "build:mac": "vite build && tsc -p electron/tsconfig.json && electron-builder --mac dmg zip",
+    "build:mac": "vite build && tsc -p electron/tsconfig.json && electron-builder --mac zip --x64 --arm64",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -25,7 +25,10 @@
     "socket.io-client": "^4.7.0",
     "vue": "^3.4.0",
     "vue-echarts": "^7.0.0",
-    "vue-router": "^4.3.0"
+    "vue-router": "^4.3.0",
+    "koffi": "^3.1.6",
+    "@koromix/koffi-win32-x64": "3.1.6",
+    "@abandonware/noble": "^1.9.2-25"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
@@ -69,14 +72,28 @@
     },
     "mac": {
       "target": [
-        "dmg",
         "zip"
       ],
       "category": "public.app-category.healthcare-fitness",
       "icon": "build/icon-512.png",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
-      "hardenedRuntime": true,
+      "hardenedRuntime": false,
       "gatekeeperAssess": false
-    }
+    },
+    "asarUnpack": [
+      "**/*.node",
+      "node_modules/koffi/**/*",
+      "node_modules/@koromix/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/@koromix/koffi-win32-x64/win32_x64",
+        "to": "koffi/win32_x64",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "npmRebuild": false
   }
 }
