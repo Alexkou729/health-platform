@@ -1,6 +1,6 @@
 # 🏥 健康管理系统 (Health Platform)
 
-> 基于 Quantum Analyzer 反编译分析 + 网络版升级方案构建的养生馆健康管理系统
+> 基于智能健康分析仪 + 网络版升级方案构建的养生馆健康管理系统
 
 [![Vue](https://img.shields.io/badge/Vue-3.4-brightgreen)]() [![Electron](https://img.shields.io/badge/Electron-29-blueviolet)]() [![NestJS](https://img.shields.io/badge/NestJS-10-red)]() [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue)]()
 
