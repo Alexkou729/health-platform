@@ -18,14 +18,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      # 装 pnpm 9（项目 engines.pnpm 要求 >=9.0.0），但 packageManager 写的是 8.9.0
-      # 用 COREPACK_ENABLE_STRICT=0 + --config.package-manager-strict=false 绕过 packageManager 严格检查
-      - name: Install pnpm 9 (bypass packageManager 8.9.0 conflict)
+      - name: Install pnpm 9 (bypass packageManager 8.9.0 strict)
         run: |
           npm install -g pnpm@9
           echo "COREPACK_ENABLE_STRICT=0" >> $GITHUB_ENV
-      - name: pnpm install (忽略 packageManager 8.9.0 严格检查)
-        run: pnpm install --frozen-lockfile --ignore-scripts --config.package-manager-strict=false
+      # 不用 --frozen-lockfile（lockfile 跟 package.json 不同步，noble 是后加的）
+      - name: pnpm install
+        run: pnpm install --ignore-scripts --config.package-manager-strict=false
       - name: Rebuild noble for Electron + win32-x64
         run: |
           cd apps/desktop
@@ -51,12 +50,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install pnpm 9 (bypass packageManager 8.9.0 conflict)
+      - name: Install pnpm 9 (bypass packageManager 8.9.0 strict)
         run: |
           npm install -g pnpm@9
           echo "COREPACK_ENABLE_STRICT=0" >> $GITHUB_ENV
-      - name: pnpm install (忽略 packageManager 8.9.0 严格检查)
-        run: pnpm install --frozen-lockfile --ignore-scripts --config.package-manager-strict=false
+      - name: pnpm install
+        run: pnpm install --ignore-scripts --config.package-manager-strict=false
       - name: Rebuild noble for Electron + darwin (universal)
         run: |
           cd apps/desktop
